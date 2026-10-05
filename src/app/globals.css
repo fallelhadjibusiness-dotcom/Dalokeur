@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-cream font-sans text-ink antialiased; }
+:focus-visible { outline: 3px solid #e9b44c; outline-offset: 2px; }
