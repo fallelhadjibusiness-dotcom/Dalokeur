@@ -41,6 +41,8 @@ Alternative sans clé : Protomaps (PMTiles) hébergé sur R2 ; ajoutez les origi
 4. Domaine personnalisé : Vercel fournit HTTPS automatiquement (nécessaire au GPS).
 5. Le cron quotidien (`vercel.json`) purge les trajets, les fichiers orphelins, les limites expirées et expire les demandes sans prestataire. Sur l'offre gratuite, il ne tourne qu'une fois par jour : l'expiration des demandes est aussi appliquée à la consultation.
 
+> **Piège Vercel** : le bouton « Redeploy » reconstruit **le même commit**. Après une correction du code, attendez le déploiement automatique créé par le `git push` (onglet Deployments, vérifiez le message du commit) au lieu de cliquer sur Redeploy.
+
 ## 6. Après la mise en ligne
 - Testez : inscription client, demande avec photo, acceptation par un prestataire, messagerie, position en direct (sur un vrai téléphone, en HTTPS), connexion admin avec code 2FA.
 - Surveillance : activez les alertes d'erreurs Vercel ; ajoutez Sentry si besoin (aucune donnée personnelle dans les journaux applicatifs).
