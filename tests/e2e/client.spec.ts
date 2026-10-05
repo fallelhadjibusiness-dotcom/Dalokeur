@@ -1,4 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import { existsSync } from "node:fs";
+
+if (existsSync(".env")) process.loadEnvFile(".env");
+const db = new PrismaClient();
+test.afterAll(async () => {
+  await db.review.deleteMany({ where: { client: { fullName: { startsWith: "Test " } } } });
+  await db.serviceRequest.deleteMany({ where: { client: { fullName: { startsWith: "Test " } } } });
+  await db.user.deleteMany({ where: { fullName: { startsWith: "Test " } } });
+  await db.$disconnect();
+});
 
 const stamp = Date.now().toString().slice(-7);
 const phoneA = `77${stamp}`;

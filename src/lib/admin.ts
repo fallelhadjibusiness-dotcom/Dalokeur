@@ -5,6 +5,7 @@ import { db } from "./db";
 import { ZONES } from "./zones";
 import { PRE_ACCEPTANCE } from "./status";
 import { notify } from "./notifications";
+import { endSharingTx } from "./tracking";
 import type { Result } from "./requests";
 
 export async function assertAdmin(adminId: string) {
@@ -159,6 +160,7 @@ export async function setProviderStatus(adminId: string, providerId: string, sta
       // Les missions pas encore commencées retournent dans la file d'attente.
       const open = await tx.assignment.findMany({ where: { providerId, status: { in: ["OFFERED", "ACCEPTED"] }, request: { status: { in: ["ASSIGNED", "ACCEPTED"] } } }, include: { request: true } });
       for (const a of open) {
+        await endSharingTx(tx, a.requestId);
         await tx.assignment.update({ where: { id: a.id }, data: { status: "CANCELLED", respondedAt: new Date() } });
         await tx.serviceRequest.update({ where: { id: a.requestId }, data: { status: "PENDING" } });
         await tx.requestStatusHistory.create({ data: { requestId: a.requestId, fromStatus: a.request.status, toStatus: "PENDING", actorId: adminId, note: "Prestataire retiré : mission remise en attente" } });

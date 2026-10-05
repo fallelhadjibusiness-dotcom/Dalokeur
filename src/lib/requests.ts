@@ -7,8 +7,10 @@ import { canTransition } from "./status";
 import { zoneOfDistrict } from "./zones";
 import { locationSchema, reviewSchema, formErrors } from "./validation";
 import { z } from "zod";
+import { approximatePoint, isInDakarArea } from "./geo";
 import { getSettings } from "./admin";
 import { notify } from "./notifications";
+import { endSharingTx } from "./tracking";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; errors?: Record<string, string> };
 
@@ -21,6 +23,11 @@ const createSchema = locationSchema.extend({
   mode: z.enum(["URGENT", "SCHEDULED"], { error: "Choisissez le type de demande." }),
   description: z.string().trim().min(10, "Décrivez votre besoin en quelques mots (10 caractères minimum).").max(1000),
   scheduledAt: z.string().optional(),
+  // Position facultative (GPS ou épingle déplacée). Vide = saisie manuelle.
+  lat: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().finite().optional()),
+  lng: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().finite().optional()),
+  accuracy: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().min(0).max(100000).optional()),
+  source: z.enum(["GPS", "PIN", "MANUAL"]).optional().catch("MANUAL"),
 });
 
 export type CreateRequestInput = z.input<typeof createSchema>;
@@ -54,9 +61,21 @@ export async function createRequest(clientId: string, input: CreateRequestInput,
   const zone = zoneOfDistrict(d.district);
   if (!zone || !(await getSettings()).zones.includes(zone)) return { ok: false, error: "Quartier hors zone.", errors: { district: "Ce quartier n'est pas encore couvert." } };
 
+  let geo: { lat: number; lng: number; accuracyM: number | null; approxLat: number; approxLng: number } | null = null;
+  if (d.lat != null || d.lng != null) {
+    if (d.lat == null || d.lng == null || !isInDakarArea(d.lat, d.lng)) {
+      return { ok: false, error: "Position hors zone.", errors: { location: "Cette position est hors de la zone couverte (Dakar et Pikine). Choisissez votre quartier et saisissez l'adresse." } };
+    }
+    geo = { lat: d.lat, lng: d.lng, accuracyM: d.accuracy ?? null, ...approximatePoint(d.lat, d.lng) };
+  }
+
   const request = await db.$transaction(async (tx) => {
     const location = await tx.location.create({
-      data: { ownerUserId: clientId, district: d.district, addressLine: d.addressLine, landmark: d.landmark, source: "MANUAL" },
+      data: {
+        ownerUserId: clientId, district: d.district, addressLine: d.addressLine, landmark: d.landmark,
+        source: geo ? (d.source === "PIN" ? "PIN" : "GPS") : "MANUAL",
+        ...(geo ? { lat: geo.lat, lng: geo.lng, accuracyM: geo.accuracyM, approxLat: geo.approxLat, approxLng: geo.approxLng } : {}),
+      },
     });
     const created = await tx.serviceRequest.create({
       data: {
@@ -122,6 +141,7 @@ export async function cancelClientRequest(clientId: string, id: string, reason?:
       });
       const active = await tx.assignment.findMany({ where: { requestId: id, status: { in: ["OFFERED", "ACCEPTED"] } }, include: { provider: { select: { userId: true } } } });
       await tx.assignment.updateMany({ where: { requestId: id, status: { in: ["OFFERED", "ACCEPTED"] } }, data: { status: "CANCELLED", respondedAt: new Date() } });
+      await endSharingTx(tx, id);
       for (const a of active) await notify(tx, a.provider.userId, "mission.cancelled", "Mission annulée", `Le client a annulé la mission ${request.reference}.`, { requestId: id });
       // Remboursement des points Keur utilisés
       if (request.keurPointsUsed > 0) {
@@ -144,6 +164,7 @@ export async function confirmCompletion(clientId: string, id: string): Promise<R
   try {
     await db.$transaction(async (tx) => {
       await setStatus(tx, id, "IN_PROGRESS", "COMPLETED", clientId, "Fin du service confirmée par le client", { completedAt: new Date() });
+      await endSharingTx(tx, id);
       const accepted = await tx.assignment.findFirst({ where: { requestId: id, status: "ACCEPTED" } });
       if (accepted) {
         const p = await tx.providerProfile.update({ where: { id: accepted.providerId }, data: { missionsDone: { increment: 1 } } });

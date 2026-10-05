@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useState } from "react";
 import { Button, Card, Field, FormError } from "@/components/ui";
+import { LocationPicker } from "@/components/LocationPicker";
 import { createRequestAction } from "@/app/client/actions";
 import type { FormState } from "@/lib/session-actions";
 
@@ -13,6 +14,8 @@ export function NewRequestForm({ services, zones, initial }: { services: Svc[]; 
   const svc = services.find((s) => s.slug === slug)!;
   const [mode, setMode] = useState(initial.mode === "URGENT" && svc?.allowsUrgent ? "URGENT" : "SCHEDULED");
   const effectiveMode = svc.allowsUrgent ? mode : "SCHEDULED";
+  const [district, setDistrict] = useState("");
+  const [touched, setTouched] = useState(false); // le client a choisi lui-même : on ne le corrige plus
   const sel = "min-h-12 w-full rounded-xl2 border-2 border-emerald-100 bg-white px-4";
 
   return (
@@ -50,9 +53,10 @@ export function NewRequestForm({ services, zones, initial }: { services: Svc[]; 
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-bold">4. Où ?</legend>
+        <LocationPicker onDistrictSuggest={(d) => { if (!touched) setDistrict(d); }} serverError={e.location} />
         <div className="space-y-1">
           <label htmlFor="district" className="block text-sm font-bold">Quartier</label>
-          <select id="district" name="district" defaultValue="" className={sel} aria-invalid={!!e.district}>
+          <select id="district" name="district" value={district} onChange={(ev) => { setDistrict(ev.target.value); setTouched(true); }} className={sel} aria-invalid={!!e.district}>
             <option value="" disabled>Choisir un quartier</option>
             {Object.entries(zones).map(([z, ds]) => <optgroup key={z} label={z}>{ds.map((d) => <option key={d}>{d}</option>)}</optgroup>)}
           </select>

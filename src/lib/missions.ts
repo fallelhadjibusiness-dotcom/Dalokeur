@@ -7,6 +7,7 @@ import { canProviderAccept, canSeePrivateDetails, isRequestVisibleToProvider } f
 import { canTransition, PRE_ACCEPTANCE } from "./status";
 import type { Result } from "./requests";
 import { notify } from "./notifications";
+import { endSharingTx } from "./tracking";
 import { STATUS_LABELS } from "./status";
 
 export type MissionTab = "new" | "upcoming" | "ongoing" | "done" | "cancelled";
@@ -156,7 +157,10 @@ export async function advanceMission(userId: string, requestId: string, to: Requ
       if (res.count !== 1) throw new Error("STATE_CHANGED");
       await tx.requestStatusHistory.create({ data: { requestId, fromStatus: request.status, toStatus: to, actorId: userId } });
       await notify(tx, request.clientId, "request.status", "Votre demande avance", `${request.reference} : ${STATUS_LABELS[to]}.`, { requestId });
-      if (to === "COMPLETED") await tx.providerProfile.update({ where: { id: profile.id }, data: { missionsDone: { increment: 1 } } });
+      if (to === "COMPLETED") {
+        await tx.providerProfile.update({ where: { id: profile.id }, data: { missionsDone: { increment: 1 } } });
+        await endSharingTx(tx, requestId);
+      }
     });
   } catch (e) {
     if (e instanceof Error && e.message === "STATE_CHANGED") return { ok: false, error: "Le statut vient de changer. Actualisez la page." };

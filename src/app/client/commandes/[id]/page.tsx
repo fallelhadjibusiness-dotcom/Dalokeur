@@ -3,6 +3,9 @@ import Link from "next/link";
 import { ClientShell } from "@/components/ClientShell";
 import { CancelForm, CompleteButton, ReportForm, ReviewForm } from "@/components/RequestActions";
 import { Chat } from "@/components/Chat";
+import { DynamicMap } from "@/components/DynamicMap";
+import { LiveTrackingPanel } from "@/components/LiveTrackingPanel";
+import { getLiveLocation } from "@/lib/tracking";
 import { listMessages } from "@/lib/chat";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Badge, Card } from "@/components/ui";
@@ -22,6 +25,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
   const assignment = r.assignments[0];
   const provider = assignment?.provider;
   const cancel = cancelPolicy(r.status);
+  const live = await getLiveLocation({ id: user.id, role: "CLIENT" }, r.id);
   const chat = await listMessages({ id: user.id, role: "CLIENT" }, r.id);
 
   return (
@@ -48,6 +52,12 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
         <p className="mt-1 text-sm font-bold">{priceLabel(r.priceMode, r.estimateFcfa)}</p>
       </Card>
 
+      {live && live.state !== "unavailable" && <LiveTrackingPanel requestId={r.id} initial={live} />}
+      {r.location.lat != null && r.location.lng != null && r.status !== "CANCELLED" && (
+        <section aria-label="Votre adresse sur la carte" className="space-y-1">
+          <DynamicMap center={{ lat: r.location.lat, lng: r.location.lng }} zoom={16} height={180} ariaLabel="Carte : votre adresse" markers={[{ id: "home", lat: r.location.lat, lng: r.location.lng, color: "#d99a1f" }]} />
+        </section>
+      )}
       {chat ? <Chat requestId={r.id} initial={chat.messages} canSend={chat.canSend} /> : r.status !== "CANCELLED" && <Card className="text-sm text-ink-soft">💬 La messagerie s'ouvre dès qu'un prestataire accepte votre demande.</Card>}
 
       {r.status === "IN_PROGRESS" && <CompleteButton id={r.id} />}

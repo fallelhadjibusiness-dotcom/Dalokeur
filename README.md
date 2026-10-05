@@ -47,3 +47,19 @@ Reportés : consultation des documents de vérification (avec l'envoi de fichier
 - Mise à jour par **polling toutes les 5 s** (`GET /api/requests/[id]/messages?after=…`, en pause quand l'onglet est caché, bannière « Hors connexion » et reprise automatique). Choix volontaire : simple, fiable avec Vercel et une connexion faible. Un service temps réel (Ably/Pusher) pourra être branché plus tard sans changer les règles d'accès.
 - Notifications dans l'application (`src/lib/notifications.ts`) : demande acceptée, avancement, message, annulation, fin, avis, affectation, statut du compte. Cloche avec compteur, page dédiée, chacun ne lit que les siennes.
 Reportés : pièces jointes dans les messages (stockage), notifications push/SMS.
+
+## Étape 6 — géolocalisation
+**Création de demande** (`LocationPicker`) : « 📍 Utiliser ma position » (le GPS n'est demandé qu'à l'appui), carte avec épingle déplaçable, précision affichée (avertissement au-delà de 100 m), quartier suggéré (modifiable), saisie manuelle toujours possible (permission refusée, GPS absent, timeout, hors connexion, hors Dakar/Pikine). Adresse + quartier + point de repère restent obligatoires.
+
+**Position approximative** : on stocke la position exacte et une version arrondie (~500 m). Avant acceptation, le prestataire ne reçoit que la version approximative (cercle de 500 m sur la carte). Après acceptation : épingle exacte + lien d'itinéraire.
+
+**Partage en direct** (`src/lib/tracking.ts`) :
+- Éligibilité : livraison locale, et dépannage **urgent** uniquement. Ménage, lessive, dépannage programmé : pas de suivi continu (adresse sur carte + statuts).
+- « Commencer le trajet » : consentement explicite (case à cocher), position envoyée toutes les 15 s, passage automatique en « en route ». Bouton « Arrêter le partage de ma position » toujours visible.
+- Visible uniquement par le client de la mission et l'admin ; aucune position renvoyée hors partage actif. Cadence minimale 5 s côté serveur, zone Dakar/Pikine validée, expiration après 4 h.
+- Arrêt automatique : mission terminée, confirmée par le client, annulée, prestataire retiré, expirée.
+- Client : carte, dernière position connue + heure, estimation d'arrivée (indicative, vol d'oiseau à 25 km/h), mode hors connexion.
+- Conservation minimale : trajets supprimés 24 h après la fin de la mission (7 jours maximum), par `GET /api/cron/purge-tracking` (Vercel Cron quotidien, protégé par `CRON_SECRET`, voir `vercel.json`).
+
+**Carte — coûts et limites** : MapLibre GL (gratuit, open source) + fournisseur de tuiles configurable (`NEXT_PUBLIC_MAP_STYLE_URL`, `NEXT_PUBLIC_MAP_KEY`). Recommandé : MapTiler (offre gratuite à quota mensuel, vérifier les conditions commerciales) ou Protomaps/PMTiles sur Cloudflare R2 (coût très faible, sans clé). Sans configuration, repli OpenStreetMap pour le développement uniquement. La clé est publique : restreignez-la par domaine. MapLibre est chargé à la demande ; repli textuel si WebGL est indisponible. HTTPS obligatoire pour le GPS (Vercel le fournit).
+Limites : le suivi fonctionne tant que l'application reste ouverte (application web, pas de suivi en arrière-plan) ; précision GPS variable en zone dense.
