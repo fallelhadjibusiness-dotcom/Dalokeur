@@ -6,6 +6,8 @@ import { toProviderFull, toProviderPreview, type ProviderRequestFull, type Provi
 import { canProviderAccept, canSeePrivateDetails, isRequestVisibleToProvider } from "./policies";
 import { canTransition, PRE_ACCEPTANCE } from "./status";
 import type { Result } from "./requests";
+import { notify } from "./notifications";
+import { STATUS_LABELS } from "./status";
 
 export type MissionTab = "new" | "upcoming" | "ongoing" | "done" | "cancelled";
 export type Mission = { preview: ProviderRequestPreview; full: ProviderRequestFull | null; assignmentStatus: string | null };
@@ -103,6 +105,7 @@ export async function acceptMission(userId: string, requestId: string): Promise<
         create: { requestId, providerId: profile.id, status: "ACCEPTED", respondedAt: new Date() },
       });
       await tx.requestStatusHistory.create({ data: { requestId, fromStatus: request.status, toStatus: "ACCEPTED", actorId: userId, note: "Mission acceptée" } });
+      await notify(tx, request.clientId, "request.accepted", "Demande acceptée", `Un prestataire vérifié a accepté votre demande ${request.reference}.`, { requestId });
     });
   } catch (e) {
     if ((e instanceof Error && e.message === "TAKEN") || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) return { ok: false, error: "Cette mission vient d'être prise par un autre prestataire." };
@@ -152,6 +155,7 @@ export async function advanceMission(userId: string, requestId: string, to: Requ
       const res = await tx.serviceRequest.updateMany({ where: { id: requestId, status: request.status }, data: { status: to, ...(to === "COMPLETED" ? { completedAt: new Date() } : {}) } });
       if (res.count !== 1) throw new Error("STATE_CHANGED");
       await tx.requestStatusHistory.create({ data: { requestId, fromStatus: request.status, toStatus: to, actorId: userId } });
+      await notify(tx, request.clientId, "request.status", "Votre demande avance", `${request.reference} : ${STATUS_LABELS[to]}.`, { requestId });
       if (to === "COMPLETED") await tx.providerProfile.update({ where: { id: profile.id }, data: { missionsDone: { increment: 1 } } });
     });
   } catch (e) {

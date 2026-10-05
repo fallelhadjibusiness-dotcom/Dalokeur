@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ClientShell } from "@/components/ClientShell";
 import { CancelForm, CompleteButton, ReportForm, ReviewForm } from "@/components/RequestActions";
+import { Chat } from "@/components/Chat";
+import { listMessages } from "@/lib/chat";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Badge, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
@@ -20,6 +22,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
   const assignment = r.assignments[0];
   const provider = assignment?.provider;
   const cancel = cancelPolicy(r.status);
+  const chat = await listMessages({ id: user.id, role: "CLIENT" }, r.id);
 
   return (
     <ClientShell title={r.service.name}>
@@ -45,7 +48,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
         <p className="mt-1 text-sm font-bold">{priceLabel(r.priceMode, r.estimateFcfa)}</p>
       </Card>
 
-      <Card className="opacity-70"><p className="font-bold">💬 Messagerie</p><p className="text-sm text-ink-soft">Bientôt disponible : discutez avec votre prestataire ici.</p></Card>
+      {chat ? <Chat requestId={r.id} initial={chat.messages} canSend={chat.canSend} /> : r.status !== "CANCELLED" && <Card className="text-sm text-ink-soft">💬 La messagerie s'ouvre dès qu'un prestataire accepte votre demande.</Card>}
 
       {r.status === "IN_PROGRESS" && <CompleteButton id={r.id} />}
       {r.status === "COMPLETED" && (r.review

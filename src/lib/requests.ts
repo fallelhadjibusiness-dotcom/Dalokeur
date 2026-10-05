@@ -8,6 +8,7 @@ import { zoneOfDistrict } from "./zones";
 import { locationSchema, reviewSchema, formErrors } from "./validation";
 import { z } from "zod";
 import { getSettings } from "./admin";
+import { notify } from "./notifications";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; errors?: Record<string, string> };
 
@@ -119,7 +120,9 @@ export async function cancelClientRequest(clientId: string, id: string, reason?:
       await setStatus(tx, id, request.status, "CANCELLED", clientId, cleanReason || "Annulée par le client", {
         cancelledBy: clientId, cancelReason: cleanReason || null,
       });
+      const active = await tx.assignment.findMany({ where: { requestId: id, status: { in: ["OFFERED", "ACCEPTED"] } }, include: { provider: { select: { userId: true } } } });
       await tx.assignment.updateMany({ where: { requestId: id, status: { in: ["OFFERED", "ACCEPTED"] } }, data: { status: "CANCELLED", respondedAt: new Date() } });
+      for (const a of active) await notify(tx, a.provider.userId, "mission.cancelled", "Mission annulée", `Le client a annulé la mission ${request.reference}.`, { requestId: id });
       // Remboursement des points Keur utilisés
       if (request.keurPointsUsed > 0) {
         await tx.keurPoints.update({ where: { userId: clientId }, data: { balance: { increment: request.keurPointsUsed } } });
@@ -142,7 +145,10 @@ export async function confirmCompletion(clientId: string, id: string): Promise<R
     await db.$transaction(async (tx) => {
       await setStatus(tx, id, "IN_PROGRESS", "COMPLETED", clientId, "Fin du service confirmée par le client", { completedAt: new Date() });
       const accepted = await tx.assignment.findFirst({ where: { requestId: id, status: "ACCEPTED" } });
-      if (accepted) await tx.providerProfile.update({ where: { id: accepted.providerId }, data: { missionsDone: { increment: 1 } } });
+      if (accepted) {
+        const p = await tx.providerProfile.update({ where: { id: accepted.providerId }, data: { missionsDone: { increment: 1 } } });
+        await notify(tx, p.userId, "mission.completed", "Mission terminée", `Le client a confirmé la fin de la mission ${request.reference}.`, { requestId: id });
+      }
     });
   } catch (e) {
     if (e instanceof Error && e.message === "STATE_CHANGED") return { ok: false, error: "Le statut vient de changer. Actualisez la page." };
@@ -168,7 +174,8 @@ export async function submitReview(clientId: string, id: string, input: { rating
     await db.$transaction(async (tx) => {
       await tx.review.create({ data: { requestId: id, clientId, providerId: assignment.providerId, rating: parsed.data.rating, comment: parsed.data.comment || null } });
       const agg = await tx.review.aggregate({ where: { providerId: assignment.providerId, isHidden: false }, _avg: { rating: true } });
-      await tx.providerProfile.update({ where: { id: assignment.providerId }, data: { ratingAvg: Number((agg._avg.rating ?? 0).toFixed(1)) } });
+      const p = await tx.providerProfile.update({ where: { id: assignment.providerId }, data: { ratingAvg: Number((agg._avg.rating ?? 0).toFixed(1)) } });
+      await notify(tx, p.userId, "review.new", "Nouvel avis", `Vous avez reçu une note de ${parsed.data.rating}/5.`, { requestId: id });
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { ok: false, error: "Vous avez déjà donné votre avis." };

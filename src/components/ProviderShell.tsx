@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "./ui/Logo";
 import { Button } from "./ui";
+import { NotificationBell } from "./NotificationBell";
 import { logoutAction } from "@/lib/session-actions";
 
 const NAV = [
@@ -17,7 +18,7 @@ export function ProviderShell({ title, children }: { title?: string; children: R
     <div className="mx-auto min-h-screen max-w-md pb-24">
       <header className="flex items-center justify-between px-4 py-3">
         <Link href="/prestataire" aria-label="Accueil prestataire"><Logo /></Link>
-        <form action={logoutAction}><Button variant="ghost" className="min-h-10 px-3 text-sm">Déconnexion</Button></form>
+        <div className="flex items-center gap-1"><NotificationBell href="/prestataire/notifications" /><form action={logoutAction}><Button variant="ghost" className="min-h-10 px-3 text-sm">Déconnexion</Button></form></div>
       </header>
       <main className="space-y-4 px-4">
         {title && <h1 className="text-2xl font-extrabold text-emerald-800">{title}</h1>}

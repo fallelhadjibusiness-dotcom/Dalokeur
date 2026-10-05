@@ -4,6 +4,7 @@ import { Prisma, type DisputeStatus, type ProviderStatus, type RequestStatus, ty
 import { db } from "./db";
 import { ZONES } from "./zones";
 import { PRE_ACCEPTANCE } from "./status";
+import { notify } from "./notifications";
 import type { Result } from "./requests";
 
 export async function assertAdmin(adminId: string) {
@@ -13,10 +14,6 @@ export async function assertAdmin(adminId: string) {
 
 async function log(tx: Prisma.TransactionClient | typeof db, adminId: string, action: string, targetType: string, targetId: string | null, details?: Prisma.InputJsonValue) {
   await tx.adminAction.create({ data: { adminId, action, targetType, targetId, details } });
-}
-
-async function notify(tx: Prisma.TransactionClient, userId: string, kind: string, title: string, body: string, data?: Prisma.InputJsonValue) {
-  await tx.notification.create({ data: { userId, kind, title, body, data } });
 }
 
 // ───────── Paramètres ─────────

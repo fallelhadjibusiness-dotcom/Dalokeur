@@ -16,3 +16,12 @@ export async function requireRole(role: Role) {
   }
   return user;
 }
+
+// Variante sans redirection pour les routes API : renvoie null si non autorisé. Rôle revérifié en base.
+export async function getActor(): Promise<{ id: string; role: Role } | null> {
+  const session = await auth();
+  if (!session?.user) return null;
+  const user = await db.user.findUnique({ where: { id: session.user.id }, include: { roles: true } });
+  if (!user || !user.isActive || !user.roles.some((r) => r.role === session.user.role)) return null;
+  return { id: user.id, role: session.user.role };
+}

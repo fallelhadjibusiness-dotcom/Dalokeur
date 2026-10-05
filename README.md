@@ -41,3 +41,9 @@ Tableau de bord (demandes, en cours, terminées, annulations, prestataires actif
 - Suspension/refus : les missions non commencées retournent en file d'attente et le client est notifié.
 - Les zones de couverture désactivées bloquent les nouvelles demandes.
 Reportés : consultation des documents de vérification (avec l'envoi de fichiers), création de nouveaux services, 2FA admin.
+
+## Étape 5 — messagerie et notifications
+- Messagerie par mission (`src/lib/chat.ts`) : ouverte dès qu'un prestataire accepte, entre le client propriétaire et le prestataire assigné ; l'admin lit en lecture seule. Lecture seule après annulation, fermée 48 h après la fin. 1000 caractères max, 20 messages/minute, accusés « Envoyé / Lu ».
+- Mise à jour par **polling toutes les 5 s** (`GET /api/requests/[id]/messages?after=…`, en pause quand l'onglet est caché, bannière « Hors connexion » et reprise automatique). Choix volontaire : simple, fiable avec Vercel et une connexion faible. Un service temps réel (Ably/Pusher) pourra être branché plus tard sans changer les règles d'accès.
+- Notifications dans l'application (`src/lib/notifications.ts`) : demande acceptée, avancement, message, annulation, fin, avis, affectation, statut du compte. Cloche avec compteur, page dédiée, chacun ne lit que les siennes.
+Reportés : pièces jointes dans les messages (stockage), notifications push/SMS.

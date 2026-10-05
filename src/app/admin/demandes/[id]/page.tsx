@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
 import { ActionButton } from "@/components/AdminControls";
+import { Chat } from "@/components/Chat";
+import { listMessages } from "@/lib/chat";
 import { Badge, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { getRequestDetail } from "@/lib/admin";
@@ -16,6 +18,7 @@ export default async function AdminRequestPage({ params }: { params: Promise<{ i
   const d = await getRequestDetail(admin.id, id);
   if (!d) notFound();
   const { request: r, candidates } = d;
+  const chat = await listMessages({ id: admin.id, role: "ADMIN" }, r.id);
   const assignable = PRE_ACCEPTANCE.includes(r.status);
   const current = r.assignments.find((a) => a.status === "OFFERED" || a.status === "ACCEPTED");
   return (
@@ -41,6 +44,7 @@ export default async function AdminRequestPage({ params }: { params: Promise<{ i
           )}
         </section>
       )}
+      {chat && <Chat requestId={r.id} initial={chat.messages} canSend={false} />}
       <details className="text-sm"><summary className="cursor-pointer font-bold">Historique</summary>
         <ul className="mt-2 space-y-1">{r.history.map((h) => <li key={h.id}>{dateFr(h.createdAt)} — {STATUS_LABELS[h.toStatus]}{h.note ? ` (${h.note})` : ""}</li>)}</ul></details>
     </AdminShell>

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { ProviderShell } from "@/components/ProviderShell";
 import { AcceptDecline, AdvanceButton } from "@/components/MissionActions";
+import { Chat } from "@/components/Chat";
+import { listMessages } from "@/lib/chat";
 import { Badge, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { getMission, getProviderContext } from "@/lib/missions";
@@ -15,6 +17,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
   const [m, ctx] = await Promise.all([getMission(user.id, id), getProviderContext(user.id)]);
   if (!m || !ctx) notFound();
   const p = m.preview;
+  const chat = m.full ? await listMessages({ id: user.id, role: "PROVIDER" }, p.id) : null;
   const open = PRE_ACCEPTANCE.includes(p.status) && m.assignmentStatus !== "DECLINED";
   const can = canProviderAccept(ctx.profile.status, ctx.profile.available);
   const why = ctx.profile.status !== "VERIFIED" ? "Compte non validé : vous ne pouvez pas accepter de mission." : !ctx.profile.available ? "Activez votre disponibilité pour accepter." : undefined;
@@ -46,7 +49,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
 
       {open && <AcceptDecline id={p.id} canAccept={can} reason={why} />}
       {m.full && <AdvanceButton id={p.id} status={p.status} />}
-      {m.full && <Card className="opacity-70"><p className="font-bold">💬 Messagerie</p><p className="text-sm text-ink-soft">Bientôt disponible.</p></Card>}
+      {m.full && chat && <Chat requestId={p.id} initial={chat.messages} canSend={chat.canSend} />}
       {p.status === "CANCELLED" && <Card className="bg-red-100">Cette mission a été annulée. Les informations du client ne sont plus accessibles.</Card>}
     </ProviderShell>
   );
