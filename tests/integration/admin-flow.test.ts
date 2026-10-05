@@ -147,6 +147,15 @@ suite("administration (base réelle)", () => {
     expect((await mk()).length).toBeGreaterThan(0); // Dakar toujours OK
   });
 
+  it("règles de points Keur : bornes validées, conservées en base", async () => {
+    const cur = await admin.getSettings();
+    expect((await admin.updateSettings(adminId, { commission: cur.commission, zones: cur.zones, keur: { pointValueFcfa: 0, perMission: 10, perReview: 5 } })).ok).toBe(false);
+    expect((await admin.updateSettings(adminId, { commission: cur.commission, zones: cur.zones, keur: { pointValueFcfa: 10, perMission: 1000, perReview: 5 } })).ok).toBe(false);
+    expect((await admin.updateSettings(adminId, { commission: cur.commission, zones: cur.zones, keur: { pointValueFcfa: 15, perMission: 12, perReview: 3 } })).ok).toBe(true);
+    expect((await admin.getSettings()).keur).toEqual({ pointValueFcfa: 15, perMission: 12, perReview: 3 });
+    await admin.updateSettings(adminId, { commission: cur.commission, zones: cur.zones, keur: cur.keur });
+  });
+
   it("services : prix fixe validé, désactivation retire le service de la demande", async () => {
     const svc = await db.service.findUniqueOrThrow({ where: { slug: "menage-lessive" } });
     const input = { name: svc.name, basePriceFcfa: svc.basePriceFcfa, priceMode: svc.priceMode, allowsUrgent: svc.allowsUrgent, isActive: svc.isActive };

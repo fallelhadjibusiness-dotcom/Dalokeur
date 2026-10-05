@@ -3,7 +3,8 @@ import { ClientShell } from "@/components/ClientShell";
 import { Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { getClientRequest } from "@/lib/requests";
-import { dateFr, fcfa } from "@/lib/format";
+import { PriceBreakdown } from "@/components/PriceBreakdown";
+import { dateFr } from "@/lib/format";
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireRole("CLIENT");
@@ -21,7 +22,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           <div><dt className="text-sm text-ink-soft">Service</dt><dd className="font-bold">{r.service.name}</dd></div>
           <div><dt className="text-sm text-ink-soft">Prestataire</dt><dd className="font-bold">{provider}</dd></div>
           <div><dt className="text-sm text-ink-soft">Terminé le</dt><dd className="font-bold">{r.completedAt ? dateFr(r.completedAt) : "—"}</dd></div>
-          <div><dt className="text-sm text-ink-soft">Montant</dt><dd className="font-bold">{r.estimateFcfa != null ? fcfa(r.estimateFcfa) : "Montant convenu après diagnostic"}</dd></div>
+          <div><dt className="text-sm text-ink-soft">Montant</dt><dd><PriceBreakdown priceMode={r.priceMode} estimateFcfa={r.estimateFcfa} transportFeeFcfa={r.transportFeeFcfa} keurPointsUsed={r.keurPointsUsed} keurDiscountFcfa={r.keurDiscountFcfa} /></dd></div>
           <div><dt className="text-sm text-ink-soft">Mode de paiement</dt><dd className="font-bold">À la prestation (démo)</dd></div>
         </dl>
       </Card>

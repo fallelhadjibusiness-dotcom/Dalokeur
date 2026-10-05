@@ -8,6 +8,7 @@ import { canTransition, PRE_ACCEPTANCE } from "./status";
 import type { Result } from "./requests";
 import { notify } from "./notifications";
 import { endSharingTx } from "./tracking";
+import { awardCompletion } from "./keur";
 import { STATUS_LABELS } from "./status";
 
 export type MissionTab = "new" | "upcoming" | "ongoing" | "done" | "cancelled";
@@ -160,6 +161,7 @@ export async function advanceMission(userId: string, requestId: string, to: Requ
       if (to === "COMPLETED") {
         await tx.providerProfile.update({ where: { id: profile.id }, data: { missionsDone: { increment: 1 } } });
         await endSharingTx(tx, requestId);
+        await awardCompletion(tx, request.clientId, requestId);
       }
     });
   } catch (e) {

@@ -14,7 +14,7 @@ export async function createRequestAction(_: FormState, fd: FormData): Promise<F
     serviceSlug: str(fd, "serviceSlug"), mode: str(fd, "mode") as "URGENT" | "SCHEDULED",
     description: str(fd, "description"), district: str(fd, "district"), addressLine: str(fd, "addressLine"),
     landmark: str(fd, "landmark"), scheduledAt: str(fd, "scheduledAt") || undefined,
-    lat: str(fd, "lat"), lng: str(fd, "lng"), accuracy: str(fd, "accuracy"), source: str(fd, "source") as "GPS" | "PIN" | "MANUAL",
+    lat: str(fd, "lat"), lng: str(fd, "lng"), accuracy: str(fd, "accuracy"), source: str(fd, "source") as "GPS" | "PIN" | "MANUAL", useKeur: str(fd, "useKeur"),
   });
   if (!r.ok) return toState(r);
   redirect(`/client/commandes/${r.id}`);

@@ -17,12 +17,12 @@ const categories = [
 ];
 
 const services = [
-  { cat: "menage-lessive-nettoyage", slug: "menage-lessive", name: "Ménage, lessive et nettoyage", base: 8000, price: "FIXED_ESTIMATE", track: "NONE", urgent: false },
-  { cat: "depannage-domicile", slug: "plomberie", name: "Plomberie", base: null, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
-  { cat: "depannage-domicile", slug: "electricite", name: "Électricité", base: null, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
-  { cat: "depannage-domicile", slug: "climatisation", name: "Climatisation", base: null, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
-  { cat: "depannage-domicile", slug: "serrurerie", name: "Serrurerie", base: null, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
-  { cat: "livraison-locale", slug: "livraison-locale", name: "Livraison locale", base: 1500, price: "FIXED_ESTIMATE", track: "LIVE_ON_CONSENT", urgent: true },
+  { cat: "menage-lessive-nettoyage", slug: "menage-lessive", name: "Ménage, lessive et nettoyage", base: 8000, transport: null, price: "FIXED_ESTIMATE", track: "NONE", urgent: false },
+  { cat: "depannage-domicile", slug: "plomberie", name: "Plomberie", base: null, transport: 2000, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
+  { cat: "depannage-domicile", slug: "electricite", name: "Électricité", base: null, transport: 2000, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
+  { cat: "depannage-domicile", slug: "climatisation", name: "Climatisation", base: null, transport: 2000, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
+  { cat: "depannage-domicile", slug: "serrurerie", name: "Serrurerie", base: null, transport: 2000, price: "QUOTE_AFTER_DIAGNOSIS", track: "LIVE_ON_CONSENT", urgent: true },
+  { cat: "livraison-locale", slug: "livraison-locale", name: "Livraison locale", base: 1500, transport: 1500, price: "FIXED_ESTIMATE", track: "LIVE_ON_CONSENT", urgent: true },
 ] as const;
 
 type P = { name: string; phone: string; job: string; years: number; zones: string[]; svc: string[]; status: ProviderStatus; rating: number; done: number };
@@ -40,7 +40,7 @@ async function main() {
   for (const c of categories) await db.serviceCategory.upsert({ where: { slug: c.slug }, update: c, create: c });
   const cats = Object.fromEntries((await db.serviceCategory.findMany()).map((c) => [c.slug, c.id]));
   for (const s of services) {
-    const data = { categoryId: cats[s.cat], slug: s.slug, name: s.name, basePriceFcfa: s.base, priceMode: s.price, trackingPolicy: s.track, allowsUrgent: s.urgent };
+    const data = { categoryId: cats[s.cat], slug: s.slug, name: s.name, basePriceFcfa: s.base, transportFeeFcfa: s.transport, priceMode: s.price, trackingPolicy: s.track, allowsUrgent: s.urgent };
     await db.service.upsert({ where: { slug: s.slug }, update: data, create: data });
   }
   const svcId = Object.fromEntries((await db.service.findMany()).map((s) => [s.slug, s.id]));
@@ -57,13 +57,13 @@ async function main() {
 
   // Clients de démonstration
   const clients = [
-    { name: "Awa Diop", phone: "+221772000001", district: "Médina", addr: "Rue 11 x 6", landmark: "près de la pharmacie" },
-    { name: "Mamadou Sarr", phone: "+221772000002", district: "Thiaroye", addr: "Cité Gadaye", landmark: "derrière la mosquée" },
+    { name: "Awa Diop", phone: "+221772000001", district: "Médina", addr: "Rue 11 x 6", landmark: "près de la pharmacie", points: 150 },
+    { name: "Mamadou Sarr", phone: "+221772000002", district: "Thiaroye", addr: "Cité Gadaye", landmark: "derrière la mosquée", points: 0 },
   ];
   for (const c of clients) {
     await db.user.upsert({
       where: { phone: c.phone }, update: {},
-      create: { phone: c.phone, fullName: c.name, passwordHash: hash, roles: { create: { role: "CLIENT" } }, wallet: { create: { isDemo: true, balanceFcfa: 0 } }, keurPoints: { create: { balance: 0 } } },
+      create: { phone: c.phone, fullName: c.name, passwordHash: hash, roles: { create: { role: "CLIENT" } }, wallet: { create: { isDemo: true, balanceFcfa: 0 } }, keurPoints: { create: { balance: c.points } } },
     });
   }
 
@@ -79,6 +79,7 @@ async function main() {
   }
 
   await db.setting.upsert({ where: { key: "commission_percent" }, update: {}, create: { key: "commission_percent", value: 10 } });
+  await db.setting.upsert({ where: { key: "keur_rules" }, update: {}, create: { key: "keur_rules", value: { pointValueFcfa: 10, perMission: 10, perReview: 5 } } });
   await db.setting.upsert({ where: { key: "coverage_zones" }, update: {}, create: { key: "coverage_zones", value: ["Dakar", "Pikine"] } });
   console.log("Seed terminé. Comptes démo : mot de passe =", DEMO_PASSWORD);
 }

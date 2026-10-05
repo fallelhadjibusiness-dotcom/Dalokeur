@@ -30,10 +30,11 @@ export async function serviceAction(id: string, _: FormState, fd: FormData) {
   return run((a) => admin.updateService(a, id, {
     name: str(fd, "name"), priceMode: str(fd, "priceMode") === "QUOTE_AFTER_DIAGNOSIS" ? "QUOTE_AFTER_DIAGNOSIS" : "FIXED_ESTIMATE",
     basePriceFcfa: str(fd, "basePriceFcfa") ? Number(str(fd, "basePriceFcfa")) : null,
+    transportFeeFcfa: str(fd, "transportFeeFcfa") ? Number(str(fd, "transportFeeFcfa")) : null,
     allowsUrgent: fd.get("allowsUrgent") === "on", isActive: fd.get("isActive") === "on",
   }));
 }
 
 export async function settingsAction(_: FormState, fd: FormData) {
-  return run((a) => admin.updateSettings(a, { commission: Number(str(fd, "commission")), zones: fd.getAll("zones").map(String) }));
+  return run((a) => admin.updateSettings(a, { commission: Number(str(fd, "commission")), zones: fd.getAll("zones").map(String), keur: { pointValueFcfa: Number(str(fd, "pointValueFcfa")), perMission: Number(str(fd, "perMission")), perReview: Number(str(fd, "perReview")) } }));
 }

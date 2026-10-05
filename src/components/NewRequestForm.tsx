@@ -2,12 +2,14 @@
 import { useActionState, useState } from "react";
 import { Button, Card, Field, FormError } from "@/components/ui";
 import { LocationPicker } from "@/components/LocationPicker";
+import { computeQuote, type KeurRules } from "@/lib/pricing";
+import { fcfa } from "@/lib/format";
 import { createRequestAction } from "@/app/client/actions";
 import type { FormState } from "@/lib/session-actions";
 
-type Svc = { slug: string; name: string; allowsUrgent: boolean; quote: boolean; base: number | null };
+type Svc = { slug: string; name: string; allowsUrgent: boolean; quote: boolean; base: number | null; transportFee: number | null };
 
-export function NewRequestForm({ services, zones, initial }: { services: Svc[]; zones: Record<string, string[]>; initial: { service?: string; mode?: string } }) {
+export function NewRequestForm({ services, zones, initial, keur }: { services: Svc[]; zones: Record<string, string[]>; initial: { service?: string; mode?: string }; keur: { balance: number; rules: KeurRules } }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createRequestAction, {});
   const e = state.errors ?? {};
   const [slug, setSlug] = useState(services.find((s) => s.slug === initial.service)?.slug ?? services[0]?.slug);
@@ -15,7 +17,9 @@ export function NewRequestForm({ services, zones, initial }: { services: Svc[]; 
   const [mode, setMode] = useState(initial.mode === "URGENT" && svc?.allowsUrgent ? "URGENT" : "SCHEDULED");
   const effectiveMode = svc.allowsUrgent ? mode : "SCHEDULED";
   const [district, setDistrict] = useState("");
+  const [useKeur, setUseKeur] = useState(false);
   const [touched, setTouched] = useState(false); // le client a choisi lui-même : on ne le corrige plus
+  const quote = computeQuote({ priceMode: svc.quote ? "QUOTE_AFTER_DIAGNOSIS" : "FIXED_ESTIMATE", estimateFcfa: svc.quote ? null : svc.base, transportFeeFcfa: svc.transportFee, balance: keur.balance, wantPoints: useKeur, rules: keur.rules });
   const sel = "min-h-12 w-full rounded-xl2 border-2 border-emerald-100 bg-white px-4";
 
   return (
@@ -67,9 +71,19 @@ export function NewRequestForm({ services, zones, initial }: { services: Svc[]; 
         <p className="text-sm text-ink-soft">Votre adresse exacte n'est partagée qu'avec le prestataire qui accepte votre demande.</p>
       </fieldset>
 
-      <Card className="bg-amber-100">
+      <Card className="space-y-2 bg-amber-100">
         <p className="font-bold">Prix</p>
-        <p>{svc.quote ? "Devis après diagnostic : le prestataire vous donne le prix sur place, avant de commencer." : `Estimation : à partir de ${(svc.base ?? 0).toLocaleString("fr-FR").replace(/[  ]/g, " ")} FCFA, à régler à la prestation.`}</p>
+        <p>{svc.quote ? "Devis après diagnostic : le prestataire vous donne le prix sur place, avant de commencer." : `Estimation : à partir de ${fcfa(svc.base ?? 0)}, à régler à la prestation.`}</p>
+        {svc.transportFee != null && (
+          <>
+            <p className="text-sm">Frais de {svc.quote ? "déplacement" : "livraison"} : <b>{fcfa(svc.transportFee)}</b>{quote.pointsUsed > 0 && <> → <b>{fcfa(quote.transportAfterFcfa ?? 0)}</b> avec vos points</>}</p>
+            <label className="flex min-h-12 items-start gap-3 rounded-xl2 bg-white p-3">
+              <input type="checkbox" name="useKeur" checked={useKeur} onChange={(e) => setUseKeur(e.target.checked)} disabled={quote.maxPointsUsable === 0} className="mt-1 h-5 w-5 accent-amber-500" />
+              <span className="text-sm"><b>Utiliser mes points Keur</b><br />Vous avez {keur.balance} pts{quote.maxPointsUsable > 0 ? ` : jusqu'à ${fcfa(quote.maxPointsUsable * keur.rules.pointValueFcfa)} de réduction sur ces frais` : " : pas encore de réduction possible"}. Les points ne réduisent que les frais de transport, jamais la prestation.</span>
+            </label>
+            {e.useKeur && <p role="alert" className="text-sm font-semibold text-red-600">{e.useKeur}</p>}
+          </>
+        )}
       </Card>
 
       <Button type="submit" className="w-full" disabled={pending}>{pending ? "Envoi…" : "Confirmer ma demande"}</Button>

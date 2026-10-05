@@ -11,6 +11,9 @@ import { approximatePoint, isInDakarArea } from "./geo";
 import { getSettings } from "./admin";
 import { notify } from "./notifications";
 import { endSharingTx } from "./tracking";
+import { awardCompletion, awardReview, getKeurRules, refundPoints, spendPoints } from "./keur";
+import { computeQuote } from "./pricing";
+import { expireStaleRequests } from "./expiry";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; errors?: Record<string, string> };
 
@@ -28,6 +31,7 @@ const createSchema = locationSchema.extend({
   lng: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().finite().optional()),
   accuracy: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().min(0).max(100000).optional()),
   source: z.enum(["GPS", "PIN", "MANUAL"]).optional().catch("MANUAL"),
+  useKeur: z.union([z.boolean(), z.string()]).optional().transform((v) => v === true || v === "on" || v === "true"),
 });
 
 export type CreateRequestInput = z.input<typeof createSchema>;
@@ -61,6 +65,16 @@ export async function createRequest(clientId: string, input: CreateRequestInput,
   const zone = zoneOfDistrict(d.district);
   if (!zone || !(await getSettings()).zones.includes(zone)) return { ok: false, error: "Quartier hors zone.", errors: { district: "Ce quartier n'est pas encore couvert." } };
 
+  // Points Keur : uniquement sur les frais de transport/livraison, jamais au-delà, jamais en argent.
+  let pointsUsed = 0, discount = 0;
+  const balance = (await db.keurPoints.findUnique({ where: { userId: clientId } }))?.balance ?? 0;
+  const quote = computeQuote({ priceMode: service.priceMode, estimateFcfa: service.priceMode === "FIXED_ESTIMATE" ? service.basePriceFcfa : null, transportFeeFcfa: service.transportFeeFcfa, balance, wantPoints: d.useKeur, rules: await getKeurRules() });
+  if (d.useKeur) {
+    if (!service.transportFeeFcfa) return { ok: false, error: "Les points Keur ne s'appliquent qu'aux frais de transport ou de livraison.", errors: { useKeur: "Ce service n'a pas de frais de transport à réduire." } };
+    if (quote.pointsUsed === 0) return { ok: false, error: "Vous n'avez pas assez de points Keur.", errors: { useKeur: "Solde de points insuffisant." } };
+    pointsUsed = quote.pointsUsed; discount = quote.discountFcfa;
+  }
+
   let geo: { lat: number; lng: number; accuracyM: number | null; approxLat: number; approxLng: number } | null = null;
   if (d.lat != null || d.lng != null) {
     if (d.lat == null || d.lng == null || !isInDakarArea(d.lat, d.lng)) {
@@ -82,16 +96,20 @@ export async function createRequest(clientId: string, input: CreateRequestInput,
         reference: newReference(), clientId, serviceId: service.id, mode: d.mode as RequestMode,
         description: d.description, locationId: location.id, zone, scheduledAt, expiresAt,
         priceMode: service.priceMode, estimateFcfa: service.priceMode === "FIXED_ESTIMATE" ? service.basePriceFcfa : null,
+        transportFeeFcfa: service.transportFeeFcfa, keurPointsUsed: pointsUsed, keurDiscountFcfa: discount,
         status: "NEW",
       },
     });
+    if (!(await spendPoints(tx, clientId, pointsUsed, created.id, created.reference))) throw new Error("KEUR_INSUFFICIENT");
     await tx.requestStatusHistory.create({ data: { requestId: created.id, toStatus: "NEW", actorId: clientId, note: "Demande créée" } });
     return created;
-  });
+  }).catch((e) => { if (e instanceof Error && e.message === "KEUR_INSUFFICIENT") return null; throw e; });
+  if (!request) return { ok: false, error: "Solde de points insuffisant.", errors: { useKeur: "Solde de points insuffisant." } };
   return { ok: true, id: request.id };
 }
 
 export async function getClientRequest(clientId: string, id: string) {
+  await expireStaleRequests(new Date(), clientId);
   return db.serviceRequest.findFirst({
     where: { id, clientId },
     include: {
@@ -110,6 +128,7 @@ export async function getClientRequest(clientId: string, id: string) {
 }
 
 export async function listClientRequests(clientId: string) {
+  await expireStaleRequests(new Date(), clientId);
   return db.serviceRequest.findMany({
     where: { clientId },
     orderBy: { createdAt: "desc" },
@@ -144,10 +163,7 @@ export async function cancelClientRequest(clientId: string, id: string, reason?:
       await endSharingTx(tx, id);
       for (const a of active) await notify(tx, a.provider.userId, "mission.cancelled", "Mission annulée", `Le client a annulé la mission ${request.reference}.`, { requestId: id });
       // Remboursement des points Keur utilisés
-      if (request.keurPointsUsed > 0) {
-        await tx.keurPoints.update({ where: { userId: clientId }, data: { balance: { increment: request.keurPointsUsed } } });
-        await tx.keurPointTransaction.create({ data: { userId: clientId, delta: request.keurPointsUsed, reason: "Remboursement : mission annulée", requestId: id } });
-      }
+      await refundPoints(tx, clientId, id, request.keurPointsUsed);
     });
   } catch (e) {
     if (e instanceof Error && e.message === "STATE_CHANGED") return { ok: false, error: "Le statut de la demande vient de changer. Actualisez la page." };
@@ -165,6 +181,7 @@ export async function confirmCompletion(clientId: string, id: string): Promise<R
     await db.$transaction(async (tx) => {
       await setStatus(tx, id, "IN_PROGRESS", "COMPLETED", clientId, "Fin du service confirmée par le client", { completedAt: new Date() });
       await endSharingTx(tx, id);
+      await awardCompletion(tx, clientId, id);
       const accepted = await tx.assignment.findFirst({ where: { requestId: id, status: "ACCEPTED" } });
       if (accepted) {
         const p = await tx.providerProfile.update({ where: { id: accepted.providerId }, data: { missionsDone: { increment: 1 } } });
@@ -195,6 +212,7 @@ export async function submitReview(clientId: string, id: string, input: { rating
     await db.$transaction(async (tx) => {
       await tx.review.create({ data: { requestId: id, clientId, providerId: assignment.providerId, rating: parsed.data.rating, comment: parsed.data.comment || null } });
       const agg = await tx.review.aggregate({ where: { providerId: assignment.providerId, isHidden: false }, _avg: { rating: true } });
+      await awardReview(tx, clientId, id);
       const p = await tx.providerProfile.update({ where: { id: assignment.providerId }, data: { ratingAvg: Number((agg._avg.rating ?? 0).toFixed(1)) } });
       await notify(tx, p.userId, "review.new", "Nouvel avis", `Vous avez reçu une note de ${parsed.data.rating}/5.`, { requestId: id });
     });

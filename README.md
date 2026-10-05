@@ -63,3 +63,12 @@ Reportés : pièces jointes dans les messages (stockage), notifications push/SMS
 
 **Carte — coûts et limites** : MapLibre GL (gratuit, open source) + fournisseur de tuiles configurable (`NEXT_PUBLIC_MAP_STYLE_URL`, `NEXT_PUBLIC_MAP_KEY`). Recommandé : MapTiler (offre gratuite à quota mensuel, vérifier les conditions commerciales) ou Protomaps/PMTiles sur Cloudflare R2 (coût très faible, sans clé). Sans configuration, repli OpenStreetMap pour le développement uniquement. La clé est publique : restreignez-la par domaine. MapLibre est chargé à la demande ; repli textuel si WebGL est indisponible. HTTPS obligatoire pour le GPS (Vercel le fournit).
 Limites : le suivi fonctionne tant que l'application reste ouverte (application web, pas de suivi en arrière-plan) ; précision GPS variable en zone dense.
+
+## Étape 7 — portefeuille démo et points Keur
+- **Points Keur** (`src/lib/keur.ts`, `src/lib/pricing.ts`) : 1 point = 10 FCFA de réduction **uniquement sur les frais de transport / livraison** (dépannage : déplacement 2 000 FCFA ; livraison : 1 500 FCFA ; ménage : aucun frais, donc aucune réduction). Plafonnés aux frais et au solde, débit atomique (pas de solde négatif, même en cas de demandes simultanées). Jamais convertibles en argent, jamais mélangés au solde FCFA (deux registres distincts, aucun code ne passe de l'un à l'autre).
+- **Gains** : +10 points par mission terminée, +5 par avis laissé, une seule fois par événement ; rien pour une mission annulée. Valeurs réglables par l'admin (Paramètres).
+- **Remboursement** : annulation avant ou après acceptation, et **expiration automatique** des demandes sans prestataire (`src/lib/expiry.ts`, à la consultation et via le cron) : points rendus une seule fois, client notifié.
+- **Aucun bonus à l'inscription** : points = 0 et solde = 0 FCFA.
+- **Portefeuille démo** : monnaie fictive, recharges prédéfinies (5 000 / 10 000 / 20 000 FCFA), plafond 100 000 FCFA, historique ; Wave, Orange Money et paiement à la prestation affichés « bientôt ». Aucun paiement réel.
+- Détail du prix (estimation, déplacement, points, total à régler) sur la demande, le reçu et le formulaire.
+Migration : `20260101000000_keur_transport_fees` (frais de transport par service et par demande).

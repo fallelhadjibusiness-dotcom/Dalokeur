@@ -12,7 +12,7 @@ import { Badge, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { getClientRequest } from "@/lib/requests";
 import { cancelPolicy } from "@/lib/policies";
-import { priceLabel } from "@/lib/dto";
+import { PriceBreakdown } from "@/components/PriceBreakdown";
 import { dateFr } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/status";
 
@@ -49,7 +49,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
         <p className="font-bold">Votre demande</p>
         <p className="mt-1">{r.description}</p>
         <p className="mt-2 text-sm text-ink-soft">📍 {r.location.district} — {r.location.addressLine} ({r.location.landmark})</p>
-        <p className="mt-1 text-sm font-bold">{priceLabel(r.priceMode, r.estimateFcfa)}</p>
+        <div className="mt-2 border-t border-emerald-100 pt-2"><PriceBreakdown priceMode={r.priceMode} estimateFcfa={r.estimateFcfa} transportFeeFcfa={r.transportFeeFcfa} keurPointsUsed={r.keurPointsUsed} keurDiscountFcfa={r.keurDiscountFcfa} /></div>
       </Card>
 
       {live && live.state !== "unavailable" && <LiveTrackingPanel requestId={r.id} initial={live} />}

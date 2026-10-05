@@ -5,6 +5,8 @@ import { db } from "./db";
 import { ZONES } from "./zones";
 import { PRE_ACCEPTANCE } from "./status";
 import { notify } from "./notifications";
+import { getKeurRules } from "./keur";
+import type { KeurRules } from "./pricing";
 import { endSharingTx } from "./tracking";
 import type { Result } from "./requests";
 
@@ -24,18 +26,22 @@ export async function getSettings() {
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   const commission = typeof map.commission_percent === "number" ? (map.commission_percent as number) : 10;
   const zones = Array.isArray(map.coverage_zones) ? (map.coverage_zones as string[]).filter((z) => z in ZONES) : Object.keys(ZONES);
-  return { commission, zones };
+  return { commission, zones, keur: await getKeurRules() };
 }
 
-export async function updateSettings(adminId: string, input: { commission: number; zones: string[] }): Promise<Result> {
+export async function updateSettings(adminId: string, input: { commission: number; zones: string[]; keur?: KeurRules }): Promise<Result> {
   await assertAdmin(adminId);
+  const k = input.keur;
+  if (k && ![k.pointValueFcfa, k.perMission, k.perReview].every(Number.isInteger)) return { ok: false, error: "Les règles de points doivent être des nombres entiers.", errors: { keur: "Nombres entiers requis." } };
+  if (k && (k.pointValueFcfa < 1 || k.pointValueFcfa > 50 || k.perMission < 0 || k.perMission > 100 || k.perReview < 0 || k.perReview > 100)) return { ok: false, error: "Valeur du point : 1 à 50 FCFA ; gains : 0 à 100 points.", errors: { keur: "Valeurs hors limites." } };
   if (!Number.isFinite(input.commission) || input.commission < 0 || input.commission > 30) return { ok: false, error: "La commission doit être comprise entre 0 et 30 %.", errors: { commission: "Entre 0 et 30 %." } };
   const zones = input.zones.filter((z) => z in ZONES);
   if (zones.length === 0) return { ok: false, error: "Gardez au moins une zone de couverture.", errors: { zones: "Au moins une zone." } };
   await db.$transaction(async (tx) => {
     await tx.setting.upsert({ where: { key: "commission_percent" }, update: { value: input.commission }, create: { key: "commission_percent", value: input.commission } });
     await tx.setting.upsert({ where: { key: "coverage_zones" }, update: { value: zones }, create: { key: "coverage_zones", value: zones } });
-    await log(tx, adminId, "settings.update", "settings", null, { commission: input.commission, zones });
+    if (k) await tx.setting.upsert({ where: { key: "keur_rules" }, update: { value: { ...k } }, create: { key: "keur_rules", value: { ...k } } });
+    await log(tx, adminId, "settings.update", "settings", null, { commission: input.commission, zones, ...(k ? { keur: { ...k } } : {}) });
   });
   return { ok: true };
 }
@@ -253,14 +259,15 @@ export async function setCategoryActive(adminId: string, categoryId: string, act
   return res ? { ok: true } : { ok: false, error: "Catégorie introuvable." };
 }
 
-export type ServiceInput = { name: string; basePriceFcfa: number | null; priceMode: "FIXED_ESTIMATE" | "QUOTE_AFTER_DIAGNOSIS"; allowsUrgent: boolean; isActive: boolean };
+export type ServiceInput = { name: string; transportFeeFcfa?: number | null; basePriceFcfa: number | null; priceMode: "FIXED_ESTIMATE" | "QUOTE_AFTER_DIAGNOSIS"; allowsUrgent: boolean; isActive: boolean };
 
 export async function updateService(adminId: string, serviceId: string, input: ServiceInput): Promise<Result> {
   await assertAdmin(adminId);
   if (input.name.trim().length < 2) return { ok: false, error: "Nom invalide.", errors: { name: "Nom trop court." } };
   if (input.priceMode === "FIXED_ESTIMATE" && (input.basePriceFcfa == null || input.basePriceFcfa <= 0 || !Number.isInteger(input.basePriceFcfa))) return { ok: false, error: "Indiquez un prix en FCFA.", errors: { basePriceFcfa: "Prix entier positif requis." } };
+  if (input.transportFeeFcfa != null && (!Number.isInteger(input.transportFeeFcfa) || input.transportFeeFcfa < 0)) return { ok: false, error: "Frais de transport invalides.", errors: { transportFeeFcfa: "Entier positif ou vide." } };
   const res = await db.$transaction(async (tx) => {
-    const r = await tx.service.updateMany({ where: { id: serviceId }, data: { name: input.name.trim(), priceMode: input.priceMode, basePriceFcfa: input.priceMode === "FIXED_ESTIMATE" ? input.basePriceFcfa : null, allowsUrgent: input.allowsUrgent, isActive: input.isActive } });
+    const r = await tx.service.updateMany({ where: { id: serviceId }, data: { name: input.name.trim(), ...(input.transportFeeFcfa !== undefined ? { transportFeeFcfa: input.transportFeeFcfa || null } : {}), priceMode: input.priceMode, basePriceFcfa: input.priceMode === "FIXED_ESTIMATE" ? input.basePriceFcfa : null, allowsUrgent: input.allowsUrgent, isActive: input.isActive } });
     if (r.count) await log(tx, adminId, "service.update", "service", serviceId, { ...input });
     return r.count;
   });

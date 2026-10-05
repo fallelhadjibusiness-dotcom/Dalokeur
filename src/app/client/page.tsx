@@ -14,6 +14,7 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
     orderBy: [{ category: { sortOrder: "asc" } }, { name: "asc" }],
   });
   const urgent = services.filter((s) => s.allowsUrgent && s.category.slug === "depannage-domicile");
+  const points = await db.keurPoints.findUnique({ where: { userId: user.id } });
   const providers = await db.providerProfile.findMany({
     where: { status: "VERIFIED", available: true, user: { isActive: true } },
     orderBy: [{ ratingAvg: "desc" }, { missionsDone: "desc" }], take: 4,
@@ -27,6 +28,7 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
         <input name="q" defaultValue={q} placeholder="Plombier, ménage, livraison…" aria-label="Rechercher un service" className="min-h-12 flex-1 rounded-xl2 border-2 border-emerald-100 bg-white px-4" />
         <button className="min-h-12 rounded-xl2 bg-emerald-600 px-4 font-bold text-white">Chercher</button>
       </form>
+      <Link href="/client/portefeuille" className="flex items-center justify-between rounded-xl2 border border-amber-400 bg-amber-100 px-4 py-3"><span className="font-bold">⭐ Points Keur</span><span className="font-extrabold text-amber-600">{points?.balance ?? 0} pts</span></Link>
       <ButtonLink href="/client/demande" variant="accent" className="w-full">Demander un service</ButtonLink>
 
       {urgent.length > 0 && !q && (

@@ -99,20 +99,20 @@ enum VisitStatus {
 // ───────── Identité ─────────
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  phone        String   @unique
-  email        String?  @unique
-  passwordHash String   @map("password_hash")
-  fullName     String   @map("full_name")
-  avatarUrl    String?  @map("avatar_url")
-  isActive     Boolean  @default(true) @map("is_active")
+  id           String    @id @default(uuid()) @db.Uuid
+  phone        String    @unique
+  email        String?   @unique
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name")
+  avatarUrl    String?   @map("avatar_url")
+  isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   roles            UserRole[]
   providerProfile  ProviderProfile?
-  requests         ServiceRequest[]  @relation("ClientRequests")
+  requests         ServiceRequest[]       @relation("ClientRequests")
   messages         Message[]
   reviewsGiven     Review[]
   wallet           Wallet?
@@ -164,8 +164,8 @@ model ProviderProfile {
 }
 
 model ProviderService {
-  providerId String @map("provider_id") @db.Uuid
-  serviceId  String @map("service_id") @db.Uuid
+  providerId String          @map("provider_id") @db.Uuid
+  serviceId  String          @map("service_id") @db.Uuid
   provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
   service    Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
@@ -206,16 +206,17 @@ model ServiceCategory {
 }
 
 model Service {
-  id            String         @id @default(uuid()) @db.Uuid
-  categoryId    String         @map("category_id") @db.Uuid
-  slug          String         @unique
-  name          String
-  description   String?
-  priceMode     PriceMode      @default(FIXED_ESTIMATE) @map("price_mode")
-  basePriceFcfa Int?           @map("base_price_fcfa")
-  trackingPolicy TrackingPolicy @default(NONE) @map("tracking_policy")
-  allowsUrgent  Boolean        @default(false) @map("allows_urgent")
-  isActive      Boolean        @default(true) @map("is_active")
+  id               String         @id @default(uuid()) @db.Uuid
+  categoryId       String         @map("category_id") @db.Uuid
+  slug             String         @unique
+  name             String
+  description      String?
+  priceMode        PriceMode      @default(FIXED_ESTIMATE) @map("price_mode")
+  basePriceFcfa    Int?           @map("base_price_fcfa")
+  transportFeeFcfa Int?           @map("transport_fee_fcfa") // frais de déplacement/livraison : seuls frais réductibles par les points Keur
+  trackingPolicy   TrackingPolicy @default(NONE) @map("tracking_policy")
+  allowsUrgent     Boolean        @default(false) @map("allows_urgent")
+  isActive         Boolean        @default(true) @map("is_active")
 
   category  ServiceCategory   @relation(fields: [categoryId], references: [id])
   requests  ServiceRequest[]
@@ -251,26 +252,28 @@ model Location {
 // ───────── Demandes et missions ─────────
 
 model ServiceRequest {
-  id             String        @id @default(uuid()) @db.Uuid
-  reference      String        @unique
-  clientId       String        @map("client_id") @db.Uuid
-  serviceId      String        @map("service_id") @db.Uuid
-  mode           RequestMode
-  description    String
-  photoKeys      String[]      @map("photo_keys")
-  locationId     String        @map("location_id") @db.Uuid
-  zone           String
-  scheduledAt    DateTime?     @map("scheduled_at")
-  priceMode      PriceMode     @map("price_mode")
-  estimateFcfa   Int?          @map("estimate_fcfa")
-  keurPointsUsed Int           @default(0) @map("keur_points_used")
-  status         RequestStatus @default(NEW)
-  cancelledBy    String?       @map("cancelled_by") @db.Uuid
-  cancelReason   String?       @map("cancel_reason")
-  expiresAt      DateTime?     @map("expires_at")
-  completedAt    DateTime?     @map("completed_at")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id               String        @id @default(uuid()) @db.Uuid
+  reference        String        @unique
+  clientId         String        @map("client_id") @db.Uuid
+  serviceId        String        @map("service_id") @db.Uuid
+  mode             RequestMode
+  description      String
+  photoKeys        String[]      @map("photo_keys")
+  locationId       String        @map("location_id") @db.Uuid
+  zone             String
+  scheduledAt      DateTime?     @map("scheduled_at")
+  priceMode        PriceMode     @map("price_mode")
+  estimateFcfa     Int?          @map("estimate_fcfa")
+  keurPointsUsed   Int           @default(0) @map("keur_points_used")
+  transportFeeFcfa Int?          @map("transport_fee_fcfa") // copie du tarif au moment de la demande
+  keurDiscountFcfa Int           @default(0) @map("keur_discount_fcfa")
+  status           RequestStatus @default(NEW)
+  cancelledBy      String?       @map("cancelled_by") @db.Uuid
+  cancelReason     String?       @map("cancel_reason")
+  expiresAt        DateTime?     @map("expires_at")
+  completedAt      DateTime?     @map("completed_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
   client   User     @relation("ClientRequests", fields: [clientId], references: [id])
   service  Service  @relation(fields: [serviceId], references: [id])
@@ -289,34 +292,35 @@ model ServiceRequest {
 }
 
 model Assignment {
-  id              String           @id @default(uuid()) @db.Uuid
-  requestId       String           @map("request_id") @db.Uuid
-  providerId      String           @map("provider_id") @db.Uuid
-  status          AssignmentStatus @default(OFFERED)
-  assignedBy      String?          @map("assigned_by") @db.Uuid
-  offeredAt       DateTime         @default(now()) @map("offered_at")
-  respondedAt     DateTime?        @map("responded_at")
-  declineReason   String?          @map("decline_reason")
+  id            String           @id @default(uuid()) @db.Uuid
+  requestId     String           @map("request_id") @db.Uuid
+  providerId    String           @map("provider_id") @db.Uuid
+  status        AssignmentStatus @default(OFFERED)
+  assignedBy    String?          @map("assigned_by") @db.Uuid
+  offeredAt     DateTime         @default(now()) @map("offered_at")
+  respondedAt   DateTime?        @map("responded_at")
+  declineReason String?          @map("decline_reason")
 
-  request  ServiceRequest        @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  provider ProviderProfile       @relation(fields: [providerId], references: [id])
+  request  ServiceRequest       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider ProviderProfile      @relation(fields: [providerId], references: [id])
   live     LiveLocationUpdate[]
 
   @@unique([requestId, providerId])
   @@index([providerId, status])
   @@map("assignments")
 }
+
 // Contrainte SQL ajoutée en migration : un seul assignment ACCEPTED par demande
 // CREATE UNIQUE INDEX one_accepted_per_request ON assignments(request_id) WHERE status = 'ACCEPTED';
 
 model RequestStatusHistory {
-  id         String        @id @default(uuid()) @db.Uuid
-  requestId  String        @map("request_id") @db.Uuid
+  id         String         @id @default(uuid()) @db.Uuid
+  requestId  String         @map("request_id") @db.Uuid
   fromStatus RequestStatus? @map("from_status")
-  toStatus   RequestStatus @map("to_status")
-  actorId    String?       @map("actor_id") @db.Uuid
+  toStatus   RequestStatus  @map("to_status")
+  actorId    String?        @map("actor_id") @db.Uuid
   note       String?
-  createdAt  DateTime      @default(now()) @map("created_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
 
   request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
@@ -414,10 +418,10 @@ model Notification {
 // ───────── Portefeuille démo et points Keur (strictement séparés) ─────────
 
 model Wallet {
-  id         String  @id @default(uuid()) @db.Uuid
-  userId     String  @unique @map("user_id") @db.Uuid
-  balanceFcfa Int    @default(0) @map("balance_fcfa")
-  isDemo     Boolean @default(true) @map("is_demo")
+  id          String  @id @default(uuid()) @db.Uuid
+  userId      String  @unique @map("user_id") @db.Uuid
+  balanceFcfa Int     @default(0) @map("balance_fcfa")
+  isDemo      Boolean @default(true) @map("is_demo")
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
@@ -466,19 +470,19 @@ model KeurPointTransaction {
 // ───────── Immobilier (modèle prêt, interface en P2) ─────────
 
 model Property {
-  id                    String       @id @default(uuid()) @db.Uuid
-  title                 String
-  listingType           ListingType  @map("listing_type")
-  propertyType          PropertyType @map("property_type")
-  priceFcfa             Int          @map("price_fcfa")
-  district              String
-  approxLat             Float?       @map("approx_lat")
-  approxLng             Float?       @map("approx_lng")
-  exactAddress          String?      @map("exact_address") // révélée après validation de la visite
-  description           String
-  photoKeys             String[]     @map("photo_keys")
-  isActive              Boolean      @default(true) @map("is_active")
-  createdAt             DateTime     @default(now()) @map("created_at")
+  id           String       @id @default(uuid()) @db.Uuid
+  title        String
+  listingType  ListingType  @map("listing_type")
+  propertyType PropertyType @map("property_type")
+  priceFcfa    Int          @map("price_fcfa")
+  district     String
+  approxLat    Float?       @map("approx_lat")
+  approxLng    Float?       @map("approx_lng")
+  exactAddress String?      @map("exact_address") // révélée après validation de la visite
+  description  String
+  photoKeys    String[]     @map("photo_keys")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
 
   visits PropertyVisit[]
 
