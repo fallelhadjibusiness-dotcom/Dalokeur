@@ -9,7 +9,8 @@ export default async function AdminJournal() {
   const rows = await listAdminActions(admin.id);
   return (
     <AdminShell title="Journal des actions">
-      <ul className="space-y-2">{rows.map((a) => <li key={a.id}><Card><p className="font-bold">{a.action}</p><p className="text-sm text-ink-soft">{a.admin.fullName} · {dateFr(a.createdAt)} · {a.targetType}{a.targetId ? ` ${a.targetId.slice(0, 8)}` : ""}</p></Card></li>)}{rows.length === 0 && <Card>Aucune action.</Card>}</ul>
+      <ul className="space-y-2">{rows.map((a) => <li key={a.id}><Card><p className="font-bold">{a.action}</p><p className="text-sm text-ink-soft">{a.admin.fullName} · {dateFr(a.createdAt)} · {a.targetType}{a.targetId ? ` ${a.targetId.slice(0, 8)}` : ""}</p></Card></li>)}</ul>
+      {rows.length === 0 && <Card>Aucune action.</Card>}
     </AdminShell>
   );
 }

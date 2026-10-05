@@ -40,7 +40,11 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Le service worker doit toujours être revalidé pour que les mises à jour arrivent.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, max-age=0" }, { key: "Service-Worker-Allowed", value: "/" }] },
+    ];
   },
 };
 export default nextConfig;

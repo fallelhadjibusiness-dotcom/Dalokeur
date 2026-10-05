@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dalokeur
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: dalokeur
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dalokeur"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://dalokeur:dev@localhost:5432/dalokeur
+      DIRECT_URL: postgresql://dalokeur:dev@localhost:5432/dalokeur
+      AUTH_SECRET: ci-secret-not-for-production
+      AUTH_URL: http://localhost:3100
+      AUTH_TRUST_HOST: "true"
+      ADMIN_SEED_PASSWORD: CiAdminPassword2026
+      STORAGE_DRIVER: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Tests unitaires et d'intégration
+        run: npm test
+      - run: npm run build
+      - name: Navigateur pour les tests de bout en bout
+        run: npx playwright install --with-deps chromium
+      - name: Tests de bout en bout (mobile)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
