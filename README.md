@@ -20,3 +20,9 @@ Comptes démo (seed) : mot de passe `Dalokeur2026!` (ou `DEMO_PASSWORD`) — cli
 - L'inscription publique ne peut créer que CLIENT ou PROVIDER (en attente) ; jamais ADMIN.
 - Règles métier centralisées dans `src/lib/policies.ts` ; le prestataire ne reçoit des données privées que via `src/lib/dto.ts` après acceptation.
 - En-têtes HTTPS/HSTS, `Permissions-Policy` (géolocalisation limitée à notre origine). Limiteur de tentatives en mémoire (à remplacer par Redis en production).
+
+## Étape 2 — parcours client
+Accueil (recherche, urgences, services, prestataires recommandés) · création de demande (urgente ou créneau, quartier, adresse, point de repère, estimation ou « devis après diagnostic ») · suivi par statuts · annulation (motif obligatoire après acceptation, points Keur remboursés) · confirmation de fin · avis unique · signalement · historique · reçu démo · portefeuille démo + points Keur.
+
+Tests : `npm test` inclut des tests d'intégration sur PostgreSQL (ignorés sans `DATABASE_URL`). E2E mobile : `npm run build && npx playwright test` (définir `CHROMIUM_PATH` si besoin).
+Reportés : photo de la demande (stockage à l'étape 6), messagerie (étape 5), carte (étape 6).

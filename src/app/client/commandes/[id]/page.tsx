@@ -1,0 +1,63 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ClientShell } from "@/components/ClientShell";
+import { CancelForm, CompleteButton, ReportForm, ReviewForm } from "@/components/RequestActions";
+import { StatusTimeline } from "@/components/StatusTimeline";
+import { Badge, Card } from "@/components/ui";
+import { requireRole } from "@/lib/guards";
+import { getClientRequest } from "@/lib/requests";
+import { cancelPolicy } from "@/lib/policies";
+import { priceLabel } from "@/lib/dto";
+import { dateFr } from "@/lib/format";
+import { STATUS_LABELS } from "@/lib/status";
+
+export default async function RequestPage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requireRole("CLIENT");
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const r = await getClientRequest(user.id, id);
+  if (!r) notFound(); // y compris la demande d'un autre client : même réponse qu'une demande inexistante
+  const assignment = r.assignments[0];
+  const provider = assignment?.provider;
+  const cancel = cancelPolicy(r.status);
+
+  return (
+    <ClientShell title={r.service.name}>
+      <p className="-mt-2 text-sm text-ink-soft">Réf. {r.reference} · {r.mode === "URGENT" ? "Urgente" : r.scheduledAt ? `Créneau : ${dateFr(r.scheduledAt)}` : "Programmée"}</p>
+      <StatusTimeline status={r.status} />
+
+      {provider ? (
+        <Card>
+          <p className="text-sm font-bold text-ink-soft">Votre prestataire</p>
+          <p className="text-lg font-extrabold">{provider.user.fullName}</p>
+          <p>{provider.jobTitle}</p>
+          <p className="mt-1 text-sm">⭐ {Number(provider.ratingAvg).toFixed(1)} · {provider.missionsDone} missions réalisées</p>
+          <div className="mt-2"><Badge tone={provider.status === "VERIFIED" ? "green" : "amber"}>{provider.status === "VERIFIED" ? "Prestataire vérifié" : "Vérification en cours"}</Badge></div>
+        </Card>
+      ) : r.status !== "CANCELLED" && r.status !== "COMPLETED" ? (
+        <Card>Nous recherchons un prestataire vérifié dans votre zone. Vous serez informé dès qu'il est affecté.</Card>
+      ) : null}
+
+      <Card>
+        <p className="font-bold">Votre demande</p>
+        <p className="mt-1">{r.description}</p>
+        <p className="mt-2 text-sm text-ink-soft">📍 {r.location.district} — {r.location.addressLine} ({r.location.landmark})</p>
+        <p className="mt-1 text-sm font-bold">{priceLabel(r.priceMode, r.estimateFcfa)}</p>
+      </Card>
+
+      <Card className="opacity-70"><p className="font-bold">💬 Messagerie</p><p className="text-sm text-ink-soft">Bientôt disponible : discutez avec votre prestataire ici.</p></Card>
+
+      {r.status === "IN_PROGRESS" && <CompleteButton id={r.id} />}
+      {r.status === "COMPLETED" && (r.review
+        ? <Card><p className="font-bold">Votre avis : {"⭐".repeat(r.review.rating)}</p>{r.review.comment && <p className="mt-1 text-sm">{r.review.comment}</p>}</Card>
+        : <ReviewForm id={r.id} />)}
+      {r.status === "COMPLETED" && <Link href={`/client/commandes/${r.id}/recu`} className="block rounded-xl2 border-2 border-emerald-600 p-3 text-center font-bold text-emerald-700">🧾 Voir le reçu (démonstration)</Link>}
+      {cancel.allowed && <CancelForm id={r.id} reasonRequired={cancel.reasonRequired} />}
+      <ReportForm id={r.id} />
+
+      <details className="text-sm"><summary className="cursor-pointer font-bold">Historique</summary>
+        <ul className="mt-2 space-y-1">{r.history.map((h) => <li key={h.id}>{dateFr(h.createdAt)} — {STATUS_LABELS[h.toStatus]}{h.note ? ` (${h.note})` : ""}</li>)}</ul>
+      </details>
+    </ClientShell>
+  );
+}
