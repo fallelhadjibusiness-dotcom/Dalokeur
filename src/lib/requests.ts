@@ -7,6 +7,7 @@ import { canTransition } from "./status";
 import { zoneOfDistrict } from "./zones";
 import { locationSchema, reviewSchema, formErrors } from "./validation";
 import { z } from "zod";
+import { getSettings } from "./admin";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; errors?: Record<string, string> };
 
@@ -50,7 +51,7 @@ export async function createRequest(clientId: string, input: CreateRequestInput,
   }
 
   const zone = zoneOfDistrict(d.district);
-  if (!zone) return { ok: false, error: "Quartier hors zone.", errors: { district: "Ce quartier n'est pas encore couvert." } };
+  if (!zone || !(await getSettings()).zones.includes(zone)) return { ok: false, error: "Quartier hors zone.", errors: { district: "Ce quartier n'est pas encore couvert." } };
 
   const request = await db.$transaction(async (tx) => {
     const location = await tx.location.create({

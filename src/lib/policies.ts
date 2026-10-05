@@ -83,3 +83,10 @@ export function requiredRoleForPath(pathname: string): Role | null {
   }
   return null;
 }
+
+const ROLE_PRIORITY: Role[] = ["ADMIN", "PROVIDER", "CLIENT"];
+
+// Rôle principal d'un compte : le plus élevé en premier.
+export function primaryRole(roles: Role[]): Role | null {
+  return ROLE_PRIORITY.find((r) => roles.includes(r)) ?? null;
+}

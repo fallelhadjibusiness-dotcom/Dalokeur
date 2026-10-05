@@ -33,3 +33,11 @@ Tableau de bord · missions (nouvelles, à venir, en cours, terminées, annulée
 - Avant acceptation : service, quartier/zone, créneau, description, prix. Après : adresse, repère, téléphone. Après annulation : de nouveau masqués.
 - Acceptation atomique : deux prestataires simultanés → un seul gagne.
 Reportés : messagerie (étape 5), photo de profil et envoi de documents (stockage), « Commencer le trajet » et position en direct (étape 6).
+
+## Étape 4 — administration sécurisée
+Tableau de bord (demandes, en cours, terminées, annulations, prestataires actifs, note moyenne, taux d'acceptation, volume et chiffre d'affaires estimés) · demandes avec filtres (statut, service, zone, dates, recherche) et **affectation manuelle** · validation / refus / suspension des prestataires (motif obligatoire) · comptes (désactivation) · avis (masquage, note recalculée) · litiges · services et catégories · commission et zones de couverture · journal des actions. Logique dans `src/lib/admin.ts`.
+- Défense en profondeur : middleware (`/admin`), `requireRole("ADMIN")` dans chaque page et action, `assertAdmin` dans chaque fonction métier. Un compte désactivé perd l'accès.
+- L'admin ne se crée jamais par l'inscription : `ADMIN_SEED_PASSWORD` + `npm run db:seed`.
+- Suspension/refus : les missions non commencées retournent en file d'attente et le client est notifié.
+- Les zones de couverture désactivées bloquent les nouvelles demandes.
+Reportés : consultation des documents de vérification (avec l'envoi de fichiers), création de nouveaux services, 2FA admin.

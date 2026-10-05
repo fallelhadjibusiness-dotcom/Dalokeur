@@ -6,6 +6,7 @@ import { signIn, signOut } from "@/auth";
 import { db } from "./db";
 import { clientRegisterSchema, formErrors, loginSchema, providerRegisterSchema } from "./validation";
 import { checkRateLimit } from "./rate-limit";
+import { homePathForRole, primaryRole } from "./policies";
 
 export type FormState = { errors?: Record<string, string>; ok?: boolean };
 
@@ -18,7 +19,9 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
     if (e instanceof AuthError) return { errors: { form: "Numéro ou mot de passe incorrect, ou trop de tentatives. Réessayez plus tard." } };
     throw e;
   }
-  redirect("/client"); // le middleware redirige ensuite vers l'espace du rôle réel
+  const user = await db.user.findUnique({ where: { phone: parsed.data.phone }, include: { roles: true } });
+  const role = user && primaryRole(user.roles.map((r) => r.role));
+  redirect(role ? homePathForRole(role) : "/client");
 }
 
 export async function logoutAction() {
