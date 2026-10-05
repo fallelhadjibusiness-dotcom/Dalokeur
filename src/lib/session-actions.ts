@@ -32,7 +32,7 @@ export async function registerClientAction(_: FormState, fd: FormData): Promise<
   const parsed = clientRegisterSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { errors: formErrors(parsed.error) };
   const { fullName, phone, password } = parsed.data;
-  if (!checkRateLimit(`register:${phone}`, 5, 60 * 60_000)) return { errors: { form: "Trop de tentatives. Réessayez plus tard." } };
+  if (!(await checkRateLimit(`register:${phone}`, 5, 60 * 60_000))) return { errors: { form: "Trop de tentatives. Réessayez plus tard." } };
   if (await db.user.findUnique({ where: { phone } })) return { errors: { phone: "Ce numéro est déjà inscrit." } };
   await db.user.create({
     data: {
@@ -53,7 +53,7 @@ export async function registerProviderAction(_: FormState, fd: FormData): Promis
   const parsed = providerRegisterSchema.safeParse(raw);
   if (!parsed.success) return { errors: formErrors(parsed.error) };
   const d = parsed.data;
-  if (!checkRateLimit(`register:${d.phone}`, 5, 60 * 60_000)) return { errors: { form: "Trop de tentatives. Réessayez plus tard." } };
+  if (!(await checkRateLimit(`register:${d.phone}`, 5, 60 * 60_000))) return { errors: { form: "Trop de tentatives. Réessayez plus tard." } };
   if (await db.user.findUnique({ where: { phone: d.phone } })) return { errors: { phone: "Ce numéro est déjà inscrit." } };
   const services = await db.service.findMany({ where: { slug: { in: d.serviceSlugs }, isActive: true } });
   if (services.length === 0) return { errors: { serviceSlugs: "Service inconnu." } };

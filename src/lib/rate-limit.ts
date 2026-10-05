@@ -1,13 +1,18 @@
-// Limiteur simple en mémoire (par instance). À remplacer par Upstash/Redis en production multi-instances.
-const hits = new Map<string, { count: number; reset: number }>();
+import { db } from "./db";
 
-export function checkRateLimit(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  const entry = hits.get(key);
-  if (!entry || entry.reset < now) {
-    hits.set(key, { count: 1, reset: now + windowMs });
-    return true;
-  }
-  entry.count += 1;
-  return entry.count <= max;
+// Limiteur partagé en base : fonctionne avec plusieurs instances serverless.
+// Une seule requête SQL atomique par appel (upsert avec fenêtre glissante par clé).
+export async function checkRateLimit(key: string, max: number, windowMs: number): Promise<boolean> {
+  const rows = await db.$queryRaw<{ count: number }[]>`
+    INSERT INTO rate_limits ("key", "count", "reset_at")
+    VALUES (${key}, 1, now() + (${windowMs} * interval '1 millisecond'))
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE WHEN rate_limits."reset_at" < now() THEN 1 ELSE rate_limits."count" + 1 END,
+      "reset_at" = CASE WHEN rate_limits."reset_at" < now() THEN now() + (${windowMs} * interval '1 millisecond') ELSE rate_limits."reset_at" END
+    RETURNING "count"`;
+  return (rows[0]?.count ?? 1) <= max;
+}
+
+export async function purgeRateLimits() {
+  return (await db.rateLimit.deleteMany({ where: { resetAt: { lt: new Date() } } })).count;
 }

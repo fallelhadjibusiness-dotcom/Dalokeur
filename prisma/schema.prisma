@@ -536,3 +536,12 @@ model Setting {
 
   @@map("settings")
 }
+
+// Limiteur de tentatives partagé entre instances serverless (Vercel) : mise à jour atomique.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @map("reset_at")
+
+  @@map("rate_limits")
+}

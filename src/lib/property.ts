@@ -53,7 +53,7 @@ export async function requestVisit(clientId: string, propertyId: string, input: 
   if (lead > MAX_LEAD_MS) return { ok: false, error: "Créneau trop lointain.", errors: { preferredAt: "Choisissez un créneau dans les 30 prochains jours." } };
   const property = await db.property.findFirst({ where: { id: propertyId, isActive: true }, select: { id: true, title: true } });
   if (!property) return { ok: false, error: "Ce bien n'est plus disponible." };
-  if (!checkRateLimit(`visit:${clientId}`, 10, 60 * 60_000)) return { ok: false, error: "Trop de demandes. Réessayez plus tard." };
+  if (!(await checkRateLimit(`visit:${clientId}`, 10, 60 * 60_000))) return { ok: false, error: "Trop de demandes. Réessayez plus tard." };
   try {
     const v = await db.propertyVisit.create({ data: { propertyId, clientId, preferredAt: preferred, message: parsed.data.message || null } });
     return { ok: true, id: v.id };

@@ -12,11 +12,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { phone: {}, password: {} },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { phone, password } = parsed.data;
-        if (!checkRateLimit(`login:${phone}`, 5, 15 * 60_000)) return null;
+        // Par numéro (anti-devinette) puis par IP (seuil large : les réseaux mobiles partagent des IP)
+        if (!(await checkRateLimit(`login:${phone}`, 10, 15 * 60_000))) return null;
+        const ip = request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim();
+        if (ip && !(await checkRateLimit(`login-ip:${ip}`, 100, 15 * 60_000))) return null;
         const user = await db.user.findUnique({ where: { phone }, include: { roles: true } });
         if (!user || !user.isActive) return null;
         if (!(await bcrypt.compare(password, user.passwordHash))) return null;

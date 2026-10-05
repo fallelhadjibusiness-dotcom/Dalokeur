@@ -55,7 +55,7 @@ export async function sendMessage(actor: Actor, requestId: string, body: string)
   const text = body.trim();
   if (!text) return { ok: false, error: "Écrivez un message." };
   if (text.length > MAX_LEN) return { ok: false, error: `Message trop long (${MAX_LEN} caractères maximum).` };
-  if (!checkRateLimit(`chat:${actor.id}`, 20, 60_000)) return { ok: false, error: "Trop de messages. Patientez un instant." };
+  if (!(await checkRateLimit(`chat:${actor.id}`, 20, 60_000))) return { ok: false, error: "Trop de messages. Patientez un instant." };
 
   const recipient = actor.role === "CLIENT" ? ctx.providerUserId : ctx.request.clientId;
   const m = await db.$transaction(async (tx) => {

@@ -10,7 +10,21 @@ const phone = z
     return n ?? z.NEVER;
   });
 
-const password = z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères.").max(72);
+const COMMON = new Set(["12345678", "123456789", "1234567890", "password", "motdepasse", "azertyuiop", "qwertyuiop", "11111111", "00000000", "dalokeur", "dalokeur1", "senegal123", "passer123"]);
+const password = z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères.").max(72, "Mot de passe trop long (72 caractères maximum).");
+
+// Politique : pas de mot de passe trivial, répétitif ou égal au téléphone.
+export function passwordProblem(pw: string, phone?: string | null): string | null {
+  const lower = pw.toLowerCase();
+  if (COMMON.has(lower) || /^(.)\1+$/.test(pw)) return "Ce mot de passe est trop simple. Choisissez-en un autre.";
+  if (phone && pw.replace(/\D/g, "").length >= 8 && phone.replace(/\D/g, "").endsWith(pw.replace(/\D/g, "").slice(-9))) return "Le mot de passe ne doit pas être votre numéro de téléphone.";
+  if (!/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) return "Utilisez au moins une lettre et un chiffre.";
+  return null;
+}
+const checkPassword = (d: { password: string; phone: string }, ctx: z.RefinementCtx) => {
+  const problem = passwordProblem(d.password, d.phone);
+  if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
+};
 const fullName = z.string().trim().min(2, "Indiquez votre nom complet.").max(80);
 
 export const loginSchema = z.object({
@@ -18,9 +32,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Le mot de passe est obligatoire."),
 });
 
-export const clientRegisterSchema = z.object({ fullName, phone, password });
+export const clientRegisterSchema = z.object({ fullName, phone, password }).superRefine(checkPassword);
 
-export const providerRegisterSchema = z.object({
+export const providerRegisterSchema = z
+  .object({
   fullName,
   phone,
   password,
@@ -30,7 +45,8 @@ export const providerRegisterSchema = z.object({
   zones: z
     .array(z.string().refine((z) => Object.keys(ZONES).includes(z), "Zone inconnue."))
     .min(1, "Choisissez au moins une zone d'intervention."),
-});
+  })
+  .superRefine(checkPassword);
 
 export const locationSchema = z.object({
   district: z.string().refine((d) => ALL_DISTRICTS.includes(d), "Choisissez un quartier de la liste."),
