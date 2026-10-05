@@ -19,7 +19,8 @@
 5. **Pilote S3/R2 non testé sur un vrai bucket** ici ; test d'envoi à faire au premier déploiement.
 6. **Suivi de position** limité à l'application ouverte (pas d'arrière-plan).
 7. **Paiements** : démonstration uniquement.
-8. **Conformité** : la page de confidentialité décrit les traitements réels mais doit être relue par un juriste (loi sénégalaise n° 2008-12 sur les données personnelles, déclaration à la CDP).
+8. **Énumération de comptes** : l'inscription indique qu'un numéro est déjà utilisé (choix d'ergonomie). La connexion, elle, ne révèle jamais si un numéro existe.
+9. **Conformité** : la page de confidentialité décrit les traitements réels mais doit être relue par un juriste (loi sénégalaise n° 2008-12 sur les données personnelles, déclaration à la CDP).
 
 ## Signaler une vulnérabilité
 Écrivez à l'administrateur de la plateforme ; ne publiez pas les détails avant correction.

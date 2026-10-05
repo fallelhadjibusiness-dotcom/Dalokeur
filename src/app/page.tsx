@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink, Card } from "@/components/ui";
 
@@ -28,6 +29,7 @@ export default function Home() {
           ))}
         </ul>
       </section>
+      <p className="mt-8 px-4 text-center text-sm"><Link href="/confidentialite" className="font-bold text-emerald-700 underline">Confidentialité et données personnelles</Link></p>
       <div className="fixed inset-x-0 bottom-0 border-t border-emerald-100 bg-cream/95 p-4 backdrop-blur">
         <div className="mx-auto flex max-w-md gap-3">
           <ButtonLink href="/inscription" variant="accent" className="flex-1">Demander un service</ButtonLink>

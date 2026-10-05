@@ -57,7 +57,7 @@ test("accessibilité (axe, WCAG 2.1 AA) : aucune violation grave sur les écrans
     await c.close();
   };
 
-  await run(null, ["/", "/connexion", "/inscription", "/inscription/prestataire", "/offline"]);
+  await run(null, ["/", "/connexion", "/inscription", "/inscription/prestataire", "/offline", "/confidentialite"]);
   await run(`75${stamp}`, ["/client", "/client/demande?service=plomberie&mode=URGENT", "/client/commandes", `/client/commandes/${r.id}`, "/client/portefeuille", "/client/notifications", "/client/immobilier", `/client/immobilier/${prop.id}`, "/client/immobilier/visites"]);
   await acceptMission(prov.id, r.id);
   await run(`76${stamp}`, ["/prestataire", "/prestataire/missions", `/prestataire/missions/${r.id}`, "/prestataire/agenda", "/prestataire/messages", "/prestataire/gains", "/prestataire/profil"]);
