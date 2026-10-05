@@ -107,6 +107,10 @@ model User {
   avatarUrl    String?   @map("avatar_url")
   isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
+  totpSecretEnc String?  @map("totp_secret_enc") // chiffré (AES-256-GCM), jamais en clair
+  totpEnabledAt DateTime? @map("totp_enabled_at")
+  totpLastStep  Int?      @map("totp_last_step") // anti-rejeu : dernier pas de 30 s accepté
+  totpRecovery  Json?     @map("totp_recovery") // empreintes bcrypt des codes de secours
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 

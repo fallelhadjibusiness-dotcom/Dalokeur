@@ -14,9 +14,9 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
   const parsed = loginSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { errors: formErrors(parsed.error) };
   try {
-    await signIn("credentials", { phone: parsed.data.phone, password: parsed.data.password, redirect: false });
+    await signIn("credentials", { phone: parsed.data.phone, password: parsed.data.password, totp: String(fd.get("totp") ?? ""), redirect: false });
   } catch (e) {
-    if (e instanceof AuthError) return { errors: { form: "Numéro ou mot de passe incorrect, ou trop de tentatives. Réessayez plus tard." } };
+    if (e instanceof AuthError) return { errors: { form: "Identifiants incorrects (ou code de vérification invalide), ou trop de tentatives. Réessayez plus tard." } };
     throw e;
   }
   const user = await db.user.findUnique({ where: { phone: parsed.data.phone }, include: { roles: true } });

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { db } from "./db";
 import { homePathForRole } from "./policies";
 
-export async function requireRole(role: Role) {
+export async function requireRole(role: Role, opts: { skip2fa?: boolean } = {}) {
   const session = await auth();
   if (!session?.user) redirect("/connexion");
   const user = await db.user.findUnique({
@@ -14,6 +14,8 @@ export async function requireRole(role: Role) {
   if (!user || !user.isActive || !user.roles.some((r) => r.role === role)) {
     redirect(session.user.role ? homePathForRole(session.user.role) : "/connexion");
   }
+  // Plateforme avec 2FA obligatoire : un admin sans 2FA est dirigé vers la page d'activation.
+  if (role === "ADMIN" && !opts.skip2fa && process.env.REQUIRE_ADMIN_2FA === "true" && !user.totpEnabledAt) redirect("/admin/securite");
   return user;
 }
 

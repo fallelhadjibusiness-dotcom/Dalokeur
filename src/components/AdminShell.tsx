@@ -5,7 +5,7 @@ import { logoutAction } from "@/lib/session-actions";
 
 const NAV = [
   ["/admin", "Tableau de bord"], ["/admin/demandes", "Demandes"], ["/admin/prestataires", "Prestataires"], ["/admin/utilisateurs", "Comptes"],
-  ["/admin/avis", "Avis"], ["/admin/litiges", "Litiges"], ["/admin/services", "Services"], ["/admin/immobilier", "Immobilier"], ["/admin/parametres", "Paramètres"], ["/admin/journal", "Journal"],
+  ["/admin/avis", "Avis"], ["/admin/litiges", "Litiges"], ["/admin/services", "Services"], ["/admin/immobilier", "Immobilier"], ["/admin/parametres", "Paramètres"], ["/admin/journal", "Journal"], ["/admin/securite", "Sécurité"],
 ];
 
 export function AdminShell({ title, children }: { title: string; children: React.ReactNode }) {
