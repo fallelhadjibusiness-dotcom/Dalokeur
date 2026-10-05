@@ -72,3 +72,11 @@ Limites : le suivi fonctionne tant que l'application reste ouverte (application 
 - **Portefeuille démo** : monnaie fictive, recharges prédéfinies (5 000 / 10 000 / 20 000 FCFA), plafond 100 000 FCFA, historique ; Wave, Orange Money et paiement à la prestation affichés « bientôt ». Aucun paiement réel.
 - Détail du prix (estimation, déplacement, points, total à régler) sur la demande, le reçu et le formulaire.
 Migration : `20260101000000_keur_transport_fees` (frais de transport par service et par demande).
+
+## Étape 8 — immobilier (et retrait du module « boutiques »)
+- **Module « gestion de boutiques » retiré** du produit : catégorie supprimée du seed et de la base (migration `20260102000000_real_estate`). Restent prévus mais non promus : location de véhicules et gestion locative.
+- **Annonces** (`src/lib/property.ts`) : Louer / Acheter, types appartement, villa, studio, terrain, bureau ; filtres quartier, type et budget (min/max), tri par prix ou date ; fiche avec prix, surface, chambres, description, quartier et **zone approximative** (cercle de 500 m). Accessible depuis l'accueil client (lien discret, module non promu en priorité).
+- **Adresse exacte protégée** : jamais sélectionnée dans les requêtes publiques ; révélée seulement au client dont la visite est **confirmée** (ou effectuée), et à l'admin. Elle redevient masquée si la visite est annulée. Un autre client reçoit une 404.
+- **Demande de visite = demande suivie** : créneau souhaité (2 h à 30 jours), une seule demande active par client et par bien, suivi Demandée → Confirmée → Effectuée / Annulée, annulation, notifications.
+- **Agence (admin)** : créer/modifier/désactiver les annonces (adresse exacte saisie mais jamais publiée), confirmer une visite avec créneau et note, la marquer effectuée, l'annuler avec motif ; tout est journalisé ; compteur de visites à confirmer sur le tableau de bord.
+- Photos : visuel de remplacement en attendant le stockage de fichiers.

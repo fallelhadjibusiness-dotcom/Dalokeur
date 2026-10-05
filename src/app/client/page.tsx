@@ -52,6 +52,8 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
         )}
       </section>
 
+      {!q && <Link href="/client/immobilier" className="block rounded-xl2 border border-emerald-100 bg-white px-4 py-3 text-center font-bold text-emerald-800">🏠 Agence immobilière : louer ou acheter</Link>}
+
       {!q && providers.length > 0 && (
         <section aria-labelledby="rec"><h2 id="rec" className="mb-2 text-lg font-extrabold">Prestataires recommandés</h2>
           <ul className="space-y-2">

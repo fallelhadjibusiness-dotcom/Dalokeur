@@ -38,3 +38,23 @@ export async function serviceAction(id: string, _: FormState, fd: FormData) {
 export async function settingsAction(_: FormState, fd: FormData) {
   return run((a) => admin.updateSettings(a, { commission: Number(str(fd, "commission")), zones: fd.getAll("zones").map(String), keur: { pointValueFcfa: Number(str(fd, "pointValueFcfa")), perMission: Number(str(fd, "perMission")), perReview: Number(str(fd, "perReview")) } }));
 }
+
+// ───────── Immobilier ─────────
+import { redirect } from "next/navigation";
+import * as property from "@/lib/property";
+
+export async function propertyAction(id: string | null, _: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN");
+  const r = await property.saveProperty(user.id, id, {
+    title: str(fd, "title"), listingType: str(fd, "listingType") as "RENT" | "SALE", propertyType: str(fd, "propertyType") as "APARTMENT",
+    priceFcfa: str(fd, "priceFcfa") as unknown as number, bedrooms: str(fd, "bedrooms") as unknown as number, surfaceM2: str(fd, "surfaceM2") as unknown as number,
+    district: str(fd, "district"), exactAddress: str(fd, "exactAddress"), description: str(fd, "description"),
+  });
+  if (!r.ok) return { errors: { ...(r.errors ?? {}), form: r.error } };
+  revalidatePath("/admin/immobilier");
+  redirect("/admin/immobilier");
+}
+export async function propertyActiveAction(id: string, active: boolean) { return run((a) => property.setPropertyActive(a, id, active)); }
+export async function confirmVisitAction(id: string, _: FormState, fd: FormData) { return run((a) => property.confirmVisit(a, id, str(fd, "scheduledAt"), str(fd, "note"))); }
+export async function completeVisitAction(id: string) { return run((a) => property.completeVisit(a, id)); }
+export async function cancelVisitAdminAction(id: string, _: FormState, fd: FormData) { return run((a) => property.adminCancelVisit(a, id, str(fd, "reason"))); }

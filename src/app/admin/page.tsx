@@ -8,7 +8,7 @@ import { fcfa } from "@/lib/format";
 
 export default async function AdminHome() {
   await requireRole("ADMIN");
-  const [k, pending, disputes] = await Promise.all([getKpis(), db.providerProfile.count({ where: { status: "PENDING" } }), db.dispute.count({ where: { status: { in: ["OPEN", "IN_REVIEW"] } } })]);
+  const [k, pending, disputes, visits] = await Promise.all([getKpis(), db.providerProfile.count({ where: { status: "PENDING" } }), db.dispute.count({ where: { status: { in: ["OPEN", "IN_REVIEW"] } } }), db.propertyVisit.count({ where: { status: "REQUESTED" } })]);
   const tiles: [string, string | number][] = [
     ["Demandes totales", k.total], ["Nouvelles demandes", k.newRequests], ["Interventions en cours", k.inProgress], ["Missions terminées", k.completed],
     ["Annulations", k.cancelled], ["Prestataires actifs", k.activeProviders], ["Note moyenne", k.ratingAvg ? `⭐ ${k.ratingAvg} (${k.reviewCount})` : "—"],
@@ -16,9 +16,10 @@ export default async function AdminHome() {
   ];
   return (
     <AdminShell title="Tableau de bord">
-      {(pending > 0 || disputes > 0) && (
+      {(pending > 0 || disputes > 0 || visits > 0) && (
         <Card className="space-y-1 border-amber-400 bg-amber-100">
           {pending > 0 && <p><Link href="/admin/prestataires?status=PENDING" className="font-bold underline">{pending} prestataire(s)</Link> en attente de validation</p>}
+          {visits > 0 && <p><Link href="/admin/visites?status=REQUESTED" className="font-bold underline">{visits} visite(s)</Link> à confirmer</p>}
           {disputes > 0 && <p><Link href="/admin/litiges" className="font-bold underline">{disputes} litige(s)</Link> à traiter</p>}
         </Card>
       )}

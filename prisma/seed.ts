@@ -1,6 +1,7 @@
 // Données de démonstration — Dakar et Pikine uniquement. Aucun paiement réel.
 import { PrismaClient, type ProviderStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { DISTRICT_CENTERS, approximatePoint } from "../src/lib/geo";
 
 const db = new PrismaClient();
 
@@ -13,7 +14,6 @@ const categories = [
   { slug: "location-vehicules", name: "Location de véhicules", icon: "🚗", sortOrder: 10, isLaunch: false },
   { slug: "agence-immobiliere", name: "Agence immobilière", icon: "🏠", sortOrder: 11, isLaunch: false },
   { slug: "gestion-locative", name: "Gestion locative", icon: "🔑", sortOrder: 12, isLaunch: false },
-  { slug: "gestion-boutiques", name: "Gestion de boutiques", icon: "🏪", sortOrder: 13, isLaunch: false },
 ];
 
 const services = [
@@ -76,6 +76,24 @@ async function main() {
         providerProfile: { create: { jobTitle: p.job, experienceYears: p.years, zones: p.zones, status: p.status, ratingAvg: p.rating, missionsDone: p.done, verifiedAt: p.status === "VERIFIED" ? new Date() : null, services: { create: p.svc.map((s) => ({ serviceId: svcId[s] })) } } },
       },
     });
+  }
+
+  // Annonces immobilières de démonstration (Dakar et Pikine). Adresses exactes fictives, jamais publiées avant validation d'une visite.
+  if ((await db.property.count()) === 0) {
+    const L = [
+      { title: "Appartement F3 lumineux à Mermoz", kind: "RENT", type: "APARTMENT", price: 350000, bed: 2, m2: 95, district: "Mermoz", addr: "Résidence Les Flamboyants, 3e étage, rue MZ 12", desc: "Appartement de 2 chambres avec salon, cuisine équipée et balcon, dans une résidence sécurisée avec gardien. Proche des écoles et des commerces." },
+      { title: "Studio meublé à la Médina", kind: "RENT", type: "STUDIO", price: 120000, bed: 1, m2: 28, district: "Médina", addr: "Rue 11 x 6, immeuble Sow, 1er étage", desc: "Studio meublé et climatisé, eau et électricité incluses dans la facture forfaitaire. Idéal pour une personne seule ou un étudiant." },
+      { title: "Villa 5 pièces avec jardin à Ngor", kind: "SALE", type: "VILLA", price: 185000000, bed: 4, m2: 320, district: "Ngor", addr: "Route de Ngor, villa n°14, porte en bois", desc: "Belle villa de 4 chambres avec jardin, garage et terrasse, à quelques minutes de la plage. Titre foncier disponible." },
+      { title: "Terrain de 300 m² à Keur Massar", kind: "SALE", type: "LAND", price: 12000000, bed: null, m2: 300, district: "Keur Massar", addr: "Zone Aliou Sow, lot 45", desc: "Terrain viabilisé, bornage fait, accès par une route carrossable. Papiers en règle, idéal pour construire une maison familiale." },
+      { title: "Plateau de bureaux au Plateau", kind: "RENT", type: "OFFICE", price: 500000, bed: null, m2: 120, district: "Plateau", addr: "Avenue Léopold Sédar Senghor, 4e étage", desc: "Plateau de bureaux de 120 m² avec climatisation, ascenseur et parking. Convient pour une agence ou une petite entreprise." },
+      { title: "Villa familiale à Thiaroye", kind: "SALE", type: "VILLA", price: 45000000, bed: 4, m2: 180, district: "Thiaroye", addr: "Cité Gadaye, villa n°7, derrière la mosquée", desc: "Villa de 4 chambres sur 200 m², cour intérieure et deux salles de bain. Quartier calme, transports à proximité." },
+      { title: "Appartement 2 chambres à Guédiawaye", kind: "RENT", type: "APARTMENT", price: 150000, bed: 2, m2: 70, district: "Guédiawaye", addr: "Golf Sud, immeuble Ndiaye, 2e étage", desc: "Appartement de 2 chambres, salon et cuisine, avec réservoir d'eau. À 5 minutes de la route principale." },
+      { title: "Appartement vue mer aux Almadies", kind: "RENT", type: "APARTMENT", price: 650000, bed: 3, m2: 140, district: "Almadies", addr: "Résidence Océane, 5e étage, Route des Almadies", desc: "Appartement de standing de 3 chambres avec vue sur la mer, piscine et gardien 24h/24." },
+    ] as const;
+    for (const x of L) {
+      const c = DISTRICT_CENTERS[x.district];
+      await db.property.create({ data: { title: x.title, listingType: x.kind, propertyType: x.type, priceFcfa: x.price, bedrooms: x.bed, surfaceM2: x.m2, district: x.district, exactAddress: x.addr, description: x.desc, photoKeys: [], ...approximatePoint(c.lat, c.lng) } });
+    }
   }
 
   await db.setting.upsert({ where: { key: "commission_percent" }, update: {}, create: { key: "commission_percent", value: 10 } });
