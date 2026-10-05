@@ -99,7 +99,7 @@ async function main() {
   await db.setting.upsert({ where: { key: "commission_percent" }, update: {}, create: { key: "commission_percent", value: 10 } });
   await db.setting.upsert({ where: { key: "keur_rules" }, update: {}, create: { key: "keur_rules", value: { pointValueFcfa: 10, perMission: 10, perReview: 5 } } });
   await db.setting.upsert({ where: { key: "coverage_zones" }, update: {}, create: { key: "coverage_zones", value: ["Dakar", "Pikine"] } });
-  console.log("Seed terminé. Comptes démo : mot de passe =", DEMO_PASSWORD);
+  console.log("Seed terminé.");
 }
 
 main().finally(() => db.$disconnect());

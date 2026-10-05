@@ -32,7 +32,7 @@ Alternative sans clé : Protomaps (PMTiles) hébergé sur R2 ; ajoutez les origi
 
 ## 5. Déploiement
 1. Importez le dépôt dans Vercel. Framework : Next.js. **Build Command : `npm run vercel-build`** (applique les migrations puis construit).
-2. Premier déploiement, puis créez l'administrateur depuis votre poste :
+2. **Données de départ sans ordinateur** : ajoutez les variables `RUN_SEED=1`, `ADMIN_SEED_PASSWORD`, `ADMIN_SEED_PHONE` et `DEMO_PASSWORD` avant le premier déploiement ; le build crée alors services, quartiers, annonces, comptes de démonstration et administrateur (`scripts/maybe-seed.mjs`, idempotent). Après le premier déploiement réussi, **supprimez `RUN_SEED`** (et `DEMO_PASSWORD` si vous retirez les comptes de démonstration). Alternative depuis votre poste :
    ```bash
    DATABASE_URL="<url directe>" DIRECT_URL="<url directe>" ADMIN_SEED_PHONE="+221…" ADMIN_SEED_EMAIL="…" ADMIN_SEED_PASSWORD="<mot de passe fort>" npm run db:seed
    ```
