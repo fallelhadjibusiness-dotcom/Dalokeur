@@ -26,3 +26,10 @@ Accueil (recherche, urgences, services, prestataires recommandés) · création 
 
 Tests : `npm test` inclut des tests d'intégration sur PostgreSQL (ignorés sans `DATABASE_URL`). E2E mobile : `npm run build && npx playwright test` (définir `CHROMIUM_PATH` si besoin).
 Reportés : photo de la demande (stockage à l'étape 6), messagerie (étape 5), carte (étape 6).
+
+## Étape 3 — espace prestataire
+Tableau de bord · missions (nouvelles, à venir, en cours, terminées, annulées) · accepter/refuser · statuts (en route, arrivé, démarrer, terminer) · agenda · gains démo (après commission) · profil, disponibilité et avis reçus. Logique dans `src/lib/missions.ts`.
+- Non vérifié, suspendu, indisponible, hors zone ou hors métier : aucune demande visible, acceptation refusée côté serveur.
+- Avant acceptation : service, quartier/zone, créneau, description, prix. Après : adresse, repère, téléphone. Après annulation : de nouveau masqués.
+- Acceptation atomique : deux prestataires simultanés → un seul gagne.
+Reportés : messagerie (étape 5), photo de profil et envoi de documents (stockage), « Commencer le trajet » et position en direct (étape 6).
