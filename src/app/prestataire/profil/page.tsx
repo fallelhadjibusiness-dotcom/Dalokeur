@@ -1,4 +1,5 @@
 import { ProviderShell } from "@/components/ProviderShell";
+import { ProfileMedia } from "@/components/ProfileMedia";
 import { ProfileForm } from "@/components/ProfileForm";
 import { AvailabilityToggle } from "@/components/MissionActions";
 import { Badge, Card } from "@/components/ui";
@@ -12,7 +13,7 @@ const LABELS = { PENDING: "En attente", VERIFIED: "Vérifié", REJECTED: "Refus�
 
 export default async function ProfilePage() {
   const user = await requireRole("PROVIDER");
-  const profile = await db.providerProfile.findUnique({ where: { userId: user.id }, include: { _count: { select: { documents: true } } } });
+  const profile = await db.providerProfile.findUnique({ where: { userId: user.id }, include: { documents: { select: { id: true, kind: true, status: true }, orderBy: { createdAt: "desc" } } } });
   if (!profile) return <ProviderShell title="Profil"><Card>Profil introuvable.</Card></ProviderShell>;
   const reviews = await getProviderReviews(user.id);
   return (
@@ -21,8 +22,8 @@ export default async function ProfilePage() {
         <p className="text-lg font-extrabold">{user.fullName}</p>
         <p>📞 {user.phone}</p>
         <div className="flex items-center gap-2"><Badge tone={profile.status === "VERIFIED" ? "green" : profile.status === "PENDING" ? "amber" : "red"}>{LABELS[profile.status]}</Badge><span className="text-sm">⭐ {Number(profile.ratingAvg).toFixed(1)} · {profile.missionsDone} missions</span></div>
-        <p className="pt-2 text-sm text-ink-soft">🔒 Documents de vérification : {profile._count.documents} envoyé(s), consultables uniquement par l'administrateur. L'envoi de documents sera disponible prochainement.</p>
       </Card>
+      <ProfileMedia avatarKey={user.avatarUrl} docs={profile.documents} />
       <AvailabilityToggle available={profile.available} />
       <ProfileForm zones={Object.keys(ZONES)} selected={profile.zones} jobTitle={profile.jobTitle} bio={profile.bio ?? ""} experienceYears={profile.experienceYears} />
       <section><h2 className="mb-2 text-lg font-extrabold">Avis reçus</h2>

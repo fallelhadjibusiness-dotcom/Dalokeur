@@ -7,6 +7,7 @@ import { RequestVisitForm } from "@/components/VisitForms";
 import { Badge, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { db } from "@/lib/db";
+import { fileUrl } from "@/lib/format";
 import { getPublicProperty, LISTING_LABELS, PROPERTY_LABELS, VISIT_LABELS } from "@/lib/property";
 
 export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +19,8 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const active = await db.propertyVisit.findFirst({ where: { propertyId: id, clientId: user.id, status: { in: ["REQUESTED", "CONFIRMED"] } }, select: { id: true, status: true } });
   return (
     <ClientShell title={p.title}>
-      <PropertyVisual type={p.propertyType} height={180} />
+      <PropertyVisual type={p.propertyType} height={200} photoKey={p.photoKeys[0]} />
+      {p.photoKeys.length > 1 && <ul className="flex gap-2 overflow-x-auto">{p.photoKeys.slice(1).map((k) => <li key={k} className="shrink-0">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={fileUrl(k)} alt="Autre photo du bien" loading="lazy" className="h-24 w-32 rounded-xl2 object-cover" /></li>)}</ul>}
       <div className="flex items-center justify-between"><p className="text-2xl font-extrabold text-emerald-800">{priceText(p)}</p><Badge tone={p.listingType === "RENT" ? "green" : "amber"}>{LISTING_LABELS[p.listingType]}</Badge></div>
       <Card className="space-y-1">
         <p className="font-bold">{PROPERTY_LABELS[p.propertyType]}{p.bedrooms ? ` · ${p.bedrooms} chambre(s)` : ""}{p.surfaceM2 ? ` · ${p.surfaceM2} m²` : ""}</p>

@@ -9,6 +9,7 @@ const stamp = Date.now().toString().slice(-7);
 const PASSWORD = "MotDePasse123";
 const SECRET = `Résidence Teranga ${stamp}, 4e étage, porte verte`;
 const TITLE = `Appartement F3 Test ${stamp}`;
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const local = (d: Date) => d.toISOString().slice(0, 16);
 
 async function login(page: Page, p: string) {
@@ -51,6 +52,10 @@ test("immobilier : annonce, recherche, visite, adresse masquée puis révélée"
   await ap.getByRole("button", { name: "Enregistrer l'annonce" }).click();
   await expect(ap).toHaveURL(/\/admin\/immobilier$/);
   await expect(ap.getByText(TITLE)).toBeVisible();
+  // photo de l'annonce (envoi réel)
+  await ap.getByRole("link", { name: TITLE }).click();
+  await ap.getByLabel("Ajouter une photo à l'annonce").setInputFiles({ name: "salon.png", mimeType: "image/png", buffer: PNG });
+  await expect(ap.getByAltText("Photo de l'annonce")).toBeVisible();
 
   // ── Client : recherche Louer + filtres
   const cctx = await browser.newContext({ ...use }); const cp = await cctx.newPage();
@@ -69,6 +74,7 @@ test("immobilier : annonce, recherche, visite, adresse masquée puis révélée"
   await expect(cp.getByText(TITLE)).toHaveCount(0);
   await cp.goto("/client/immobilier?type=RENT&district=Fann");
   expect(await cp.content()).not.toContain(SECRET); // aucune fuite dans la liste
+  await expect(cp.locator("li", { hasText: TITLE }).getByAltText("Photo du bien")).toBeVisible(); // vraie photo, plus le visuel de remplacement
   await cp.getByText(TITLE).click();
 
   // ── Fiche : localisation approximative, adresse jamais affichée

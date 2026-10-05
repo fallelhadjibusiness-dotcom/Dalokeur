@@ -127,6 +127,7 @@ model User {
   adminActions     AdminAction[]
   visits           PropertyVisit[]
   disputesOpened   Dispute[]
+  uploads          UploadedFile[]
 
   @@map("users")
 }
@@ -548,4 +549,21 @@ model RateLimit {
   resetAt DateTime @map("reset_at")
 
   @@map("rate_limits")
+}
+
+// Fichiers téléversés (photos, documents). L'accès est décidé côté serveur selon la finalité et la pièce jointe.
+model UploadedFile {
+  key         String    @id
+  ownerId     String    @map("owner_id") @db.Uuid
+  purpose     String // REQUEST_PHOTO | PROVIDER_DOC | AVATAR | PROPERTY_PHOTO
+  contentType String    @map("content_type")
+  sizeBytes   Int       @map("size_bytes")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  attachedAt  DateTime? @map("attached_at") // null = pas encore rattaché (purgé après 24 h)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt])
+  @@index([attachedAt, createdAt])
+  @@map("uploaded_files")
 }

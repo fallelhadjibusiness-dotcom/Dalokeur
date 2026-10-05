@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useState } from "react";
 import { Button, Card, Field, FormError } from "@/components/ui";
+import { RequestPhotos } from "@/components/RequestPhotos";
 import { LocationPicker } from "@/components/LocationPicker";
 import { computeQuote, type KeurRules } from "@/lib/pricing";
 import { fcfa } from "@/lib/format";
@@ -52,8 +53,8 @@ export function NewRequestForm({ services, zones, initial, keur }: { services: S
         <label htmlFor="description" className="block text-sm font-bold">3. Votre besoin</label>
         <textarea id="description" name="description" rows={4} placeholder="Ex : fuite d'eau sous l'évier de la cuisine" className={`${sel} py-3`} aria-invalid={!!e.description} />
         {e.description && <p role="alert" className="text-sm font-semibold text-red-600">{e.description}</p>}
-        <p className="text-sm text-ink-soft">Les photos pourront être ajoutées dans une prochaine version.</p>
       </div>
+      <RequestPhotos error={e.photos} />
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-bold">4. Où ?</legend>

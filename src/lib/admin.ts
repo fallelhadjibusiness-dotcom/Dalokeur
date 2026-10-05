@@ -148,7 +148,7 @@ export async function listProviders(adminId: string, f: { status?: string; q?: s
   await assertAdmin(adminId);
   return db.providerProfile.findMany({
     where: { ...(f.status ? { status: f.status as ProviderStatus } : {}), ...(f.q ? { user: { OR: [{ fullName: { contains: f.q, mode: "insensitive" as const } }, { phone: { contains: f.q } }] } } : {}) },
-    include: { user: { select: { fullName: true, phone: true, isActive: true } }, services: { include: { service: { select: { name: true } } } }, _count: { select: { documents: true } } },
+    include: { user: { select: { fullName: true, phone: true, isActive: true } }, services: { include: { service: { select: { name: true } } } }, documents: { select: { id: true, kind: true, fileKey: true, status: true }, orderBy: { createdAt: "desc" } } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }], take: 100,
   });
 }

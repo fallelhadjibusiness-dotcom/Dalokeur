@@ -12,6 +12,7 @@ type RequestRow = {
   priceMode: PriceMode;
   estimateFcfa: number | null;
   status: RequestStatus;
+  photoKeys?: string[];
   service: { name: string };
   location: {
     district: string;
@@ -45,6 +46,7 @@ export type ProviderRequestFull = Omit<ProviderRequestPreview, "approx"> & {
   coords: { lat: number | null; lng: number | null };
   clientName: string;
   clientPhone: string;
+  photos: string[]; // jamais dans l'aperçu : une photo peut révéler le lieu
 };
 
 export function priceLabel(mode: PriceMode, estimate: number | null): string {
@@ -78,5 +80,6 @@ export function toProviderFull(r: RequestRow): ProviderRequestFull {
     coords: { lat: r.location.lat, lng: r.location.lng },
     clientName: r.client.fullName,
     clientPhone: r.client.phone,
+    photos: r.photoKeys ?? [],
   };
 }

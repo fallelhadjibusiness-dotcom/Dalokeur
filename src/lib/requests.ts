@@ -14,6 +14,7 @@ import { endSharingTx } from "./tracking";
 import { awardCompletion, awardReview, getKeurRules, refundPoints, spendPoints } from "./keur";
 import { computeQuote } from "./pricing";
 import { expireStaleRequests } from "./expiry";
+import { claimRequestPhotos } from "./files";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; errors?: Record<string, string> };
 
@@ -31,6 +32,7 @@ const createSchema = locationSchema.extend({
   lng: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().finite().optional()),
   accuracy: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().min(0).max(100000).optional()),
   source: z.enum(["GPS", "PIN", "MANUAL"]).optional().catch("MANUAL"),
+  photoKeys: z.array(z.string()).max(3, "3 photos maximum.").optional(),
   useKeur: z.union([z.boolean(), z.string()]).optional().transform((v) => v === true || v === "on" || v === "true"),
 });
 
@@ -96,15 +98,17 @@ export async function createRequest(clientId: string, input: CreateRequestInput,
         reference: newReference(), clientId, serviceId: service.id, mode: d.mode as RequestMode,
         description: d.description, locationId: location.id, zone, scheduledAt, expiresAt,
         priceMode: service.priceMode, estimateFcfa: service.priceMode === "FIXED_ESTIMATE" ? service.basePriceFcfa : null,
-        transportFeeFcfa: service.transportFeeFcfa, keurPointsUsed: pointsUsed, keurDiscountFcfa: discount,
+        photoKeys: d.photoKeys ?? [], transportFeeFcfa: service.transportFeeFcfa, keurPointsUsed: pointsUsed, keurDiscountFcfa: discount,
         status: "NEW",
       },
     });
+    await claimRequestPhotos(tx, clientId, d.photoKeys ?? []);
     if (!(await spendPoints(tx, clientId, pointsUsed, created.id, created.reference))) throw new Error("KEUR_INSUFFICIENT");
     await tx.requestStatusHistory.create({ data: { requestId: created.id, toStatus: "NEW", actorId: clientId, note: "Demande créée" } });
     return created;
-  }).catch((e) => { if (e instanceof Error && e.message === "KEUR_INSUFFICIENT") return null; throw e; });
-  if (!request) return { ok: false, error: "Solde de points insuffisant.", errors: { useKeur: "Solde de points insuffisant." } };
+  }).catch((e) => { if (e instanceof Error && (e.message === "KEUR_INSUFFICIENT" || e.message === "PHOTOS_INVALID")) return e.message; throw e; });
+  if (request === "PHOTOS_INVALID") return { ok: false, error: "Photo invalide. Réessayez de l'envoyer.", errors: { photos: "Photo invalide. Réessayez de l'envoyer." } };
+  if (!request || request === "KEUR_INSUFFICIENT") return { ok: false, error: "Solde de points insuffisant.", errors: { useKeur: "Solde de points insuffisant." } };
   return { ok: true, id: request.id };
 }
 
@@ -121,7 +125,7 @@ export async function getClientRequest(clientId: string, id: string) {
         where: { status: { in: ["OFFERED", "ACCEPTED"] } },
         orderBy: { offeredAt: "desc" },
         take: 1,
-        include: { provider: { include: { user: { select: { fullName: true } } } } },
+        include: { provider: { include: { user: { select: { fullName: true, avatarUrl: true } } } } },
       },
     },
   });

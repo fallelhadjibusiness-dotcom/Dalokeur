@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ClientShell } from "@/components/ClientShell";
 import { CancelForm, CompleteButton, ReportForm, ReviewForm } from "@/components/RequestActions";
+import { PhotoGrid } from "@/components/PhotoGrid";
 import { Chat } from "@/components/Chat";
 import { DynamicMap } from "@/components/DynamicMap";
 import { LiveTrackingPanel } from "@/components/LiveTrackingPanel";
@@ -13,7 +14,7 @@ import { requireRole } from "@/lib/guards";
 import { getClientRequest } from "@/lib/requests";
 import { cancelPolicy } from "@/lib/policies";
 import { PriceBreakdown } from "@/components/PriceBreakdown";
-import { dateFr } from "@/lib/format";
+import { dateFr, fileUrl } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/status";
 
 export default async function RequestPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +37,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
       {provider ? (
         <Card>
           <p className="text-sm font-bold text-ink-soft">Votre prestataire</p>
-          <p className="text-lg font-extrabold">{provider.user.fullName}</p>
+          <div className="flex items-center gap-3">{provider.user.avatarUrl && <img src={fileUrl(provider.user.avatarUrl)} alt="" width={48} height={48} className="h-12 w-12 rounded-full object-cover" />}<p className="text-lg font-extrabold">{provider.user.fullName}</p></div>
           <p>{provider.jobTitle}</p>
           <p className="mt-1 text-sm">⭐ {Number(provider.ratingAvg).toFixed(1)} · {provider.missionsDone} missions réalisées</p>
           <div className="mt-2"><Badge tone={provider.status === "VERIFIED" ? "green" : "amber"}>{provider.status === "VERIFIED" ? "Prestataire vérifié" : "Vérification en cours"}</Badge></div>
@@ -48,6 +49,7 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
       <Card>
         <p className="font-bold">Votre demande</p>
         <p className="mt-1">{r.description}</p>
+        <div className="mt-2"><PhotoGrid keys={r.photoKeys} /></div>
         <p className="mt-2 text-sm text-ink-soft">📍 {r.location.district} — {r.location.addressLine} ({r.location.landmark})</p>
         <div className="mt-2 border-t border-emerald-100 pt-2"><PriceBreakdown priceMode={r.priceMode} estimateFcfa={r.estimateFcfa} transportFeeFcfa={r.transportFeeFcfa} keurPointsUsed={r.keurPointsUsed} keurDiscountFcfa={r.keurDiscountFcfa} /></div>
       </Card>

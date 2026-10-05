@@ -30,7 +30,7 @@ export function PropertyForm({ id, init }: { id: string | null; init: Init }) {
       <div className="space-y-1"><label htmlFor="description" className="block text-sm font-bold">Description</label>
         <textarea id="description" name="description" rows={5} defaultValue={init.description} className="w-full rounded-xl2 border-2 border-emerald-100 p-3" aria-invalid={!!e.description} />
         {e.description && <p role="alert" className="text-sm font-semibold text-red-600">{e.description}</p>}</div>
-      <p className="text-sm text-ink-soft">Photos : l'envoi d'images sera disponible avec le stockage de fichiers.</p>
+      {!id && <p className="text-sm text-ink-soft">Les photos s'ajoutent après l'enregistrement, depuis la page de modification.</p>}
       <Button type="submit" className="w-full" disabled={pending}>Enregistrer l'annonce</Button>
     </form>
   );

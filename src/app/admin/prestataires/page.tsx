@@ -4,7 +4,8 @@ import { ActionButton, NoteAction } from "@/components/AdminControls";
 import { Badge, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { listProviders } from "@/lib/admin";
-import { providerStatusAction, verifyProviderAction } from "../actions";
+import { providerStatusAction, reviewDocumentAction, verifyProviderAction } from "../actions";
+import { fileUrl } from "@/lib/format";
 
 const TABS = [["", "Tous"], ["PENDING", "En attente"], ["VERIFIED", "Vérifiés"], ["REJECTED", "Refusés"], ["SUSPENDED", "Suspendus"]];
 const LABELS = { PENDING: "En attente", VERIFIED: "Vérifié", REJECTED: "Refusé", SUSPENDED: "Suspendu" } as const;
@@ -23,7 +24,19 @@ export default async function AdminProviders({ searchParams }: { searchParams: P
             <div className="flex items-start justify-between"><div><p className="font-extrabold">{p.user.fullName}</p><p className="text-sm text-ink-soft">{p.jobTitle} · {p.experienceYears} an(s) · {p.user.phone}</p></div>
               <Badge tone={p.status === "VERIFIED" ? "green" : p.status === "PENDING" ? "amber" : "red"}>{LABELS[p.status]}</Badge></div>
             <p className="text-sm">Zones : {p.zones.join(", ")} · Services : {p.services.map((s) => s.service.name).join(", ")}</p>
-            <p className="text-sm text-ink-soft">Documents envoyés : {p._count.documents} · ⭐ {Number(p.ratingAvg).toFixed(1)} · {p.missionsDone} missions</p>
+            <p className="text-sm text-ink-soft">Documents envoyés : {p.documents.length} · ⭐ {Number(p.ratingAvg).toFixed(1)} · {p.missionsDone} missions</p>
+            {p.documents.length > 0 && (
+              <ul className="space-y-2 rounded-xl2 bg-cream-100 p-3" aria-label="Documents de vérification">
+                {p.documents.map((d) => (
+                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <a href={fileUrl(d.fileKey)} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">📄 {d.kind}</a>
+                    <span className="flex items-center gap-2"><Badge tone={d.status === "APPROVED" ? "green" : d.status === "PENDING" ? "amber" : "red"}>{d.status === "APPROVED" ? "Accepté" : d.status === "PENDING" ? "À examiner" : "Refusé"}</Badge>
+                      {d.status !== "APPROVED" && <ActionButton variant="primary" label="Accepter" action={reviewDocumentAction.bind(null, d.id, "APPROVED")} />}
+                      {d.status !== "REJECTED" && <ActionButton variant="danger" label="Refuser" action={reviewDocumentAction.bind(null, d.id, "REJECTED")} />}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="flex flex-wrap gap-2">
               {p.status !== "VERIFIED" && <ActionButton variant="primary" label="Valider" action={verifyProviderAction.bind(null, p.id)} />}
             </div>

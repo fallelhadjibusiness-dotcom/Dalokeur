@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProviderShell } from "@/components/ProviderShell";
 import { AcceptDecline, AdvanceButton } from "@/components/MissionActions";
+import { PhotoGrid } from "@/components/PhotoGrid";
 import { Chat } from "@/components/Chat";
 import { DynamicMap } from "@/components/DynamicMap";
 import { ProviderTripPanel } from "@/components/ProviderTripPanel";
@@ -40,6 +41,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
           <p className="font-bold">📍 Lieu d'intervention</p>
           <p>{m.full.district} — {m.full.address}</p>
           <p className="text-sm text-ink-soft">Point de repère : {m.full.landmark}</p>
+          <PhotoGrid keys={m.full.photos} />
           <p className="pt-2 font-bold">👤 {m.full.clientName}</p>
           <a href={`tel:${m.full.clientPhone}`} className="font-bold text-emerald-700 underline">{m.full.clientPhone}</a>
           {m.full.coords.lat != null && m.full.coords.lng != null && (

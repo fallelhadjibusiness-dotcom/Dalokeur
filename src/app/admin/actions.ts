@@ -58,3 +58,7 @@ export async function propertyActiveAction(id: string, active: boolean) { return
 export async function confirmVisitAction(id: string, _: FormState, fd: FormData) { return run((a) => property.confirmVisit(a, id, str(fd, "scheduledAt"), str(fd, "note"))); }
 export async function completeVisitAction(id: string) { return run((a) => property.completeVisit(a, id)); }
 export async function cancelVisitAdminAction(id: string, _: FormState, fd: FormData) { return run((a) => property.adminCancelVisit(a, id, str(fd, "reason"))); }
+
+import * as filesLib from "@/lib/files";
+export async function reviewDocumentAction(id: string, status: "APPROVED" | "REJECTED") { return run((a) => filesLib.reviewDocument(a, id, status)); }
+export async function removePropertyPhotoAction(propertyId: string, key: string) { return run((a) => filesLib.removePropertyPhoto(a, propertyId, key)); }

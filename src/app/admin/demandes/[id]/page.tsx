@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
 import { ActionButton } from "@/components/AdminControls";
+import { PhotoGrid } from "@/components/PhotoGrid";
 import { Chat } from "@/components/Chat";
 import { listMessages } from "@/lib/chat";
 import { Badge, Card } from "@/components/ui";
@@ -26,6 +27,7 @@ export default async function AdminRequestPage({ params }: { params: Promise<{ i
       <div className="flex items-center gap-2"><Badge>{STATUS_LABELS[r.status]}</Badge><span className="text-sm text-ink-soft">{r.mode === "URGENT" ? "Urgente" : r.scheduledAt ? dateFr(r.scheduledAt) : ""}</span></div>
       <Card className="space-y-1">
         <p>{r.description}</p>
+        <PhotoGrid keys={r.photoKeys} />
         <p className="text-sm font-bold">{priceLabel(r.priceMode, r.estimateFcfa)}</p>
         <p className="text-sm">👤 {r.client.fullName} — {r.client.phone}</p>
         <p className="text-sm">📍 {r.location.district} — {r.location.addressLine} ({r.location.landmark})</p>

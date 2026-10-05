@@ -3,7 +3,7 @@ import { ClientShell } from "@/components/ClientShell";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { requireRole } from "@/lib/guards";
 import { db } from "@/lib/db";
-import { fcfa } from "@/lib/format";
+import { fcfa, fileUrl } from "@/lib/format";
 
 export default async function ClientHome({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await requireRole("CLIENT");
@@ -18,7 +18,7 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
   const providers = await db.providerProfile.findMany({
     where: { status: "VERIFIED", available: true, user: { isActive: true } },
     orderBy: [{ ratingAvg: "desc" }, { missionsDone: "desc" }], take: 4,
-    include: { user: { select: { fullName: true } } },
+    include: { user: { select: { fullName: true, avatarUrl: true } } },
   });
 
   return (
@@ -59,7 +59,7 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
           <ul className="space-y-2">
             {providers.map((p) => (
               <li key={p.id}><Card className="flex items-center justify-between">
-                <div><p className="font-extrabold">{p.user.fullName}</p><p className="text-sm text-ink-soft">{p.jobTitle} · {p.zones.join(", ")}</p></div>
+                <div className="flex items-center gap-3">{p.user.avatarUrl ? <img src={fileUrl(p.user.avatarUrl)} alt="" width={44} height={44} loading="lazy" className="h-11 w-11 rounded-full object-cover" /> : <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-lg">👤</span>}<div><p className="font-extrabold">{p.user.fullName}</p><p className="text-sm text-ink-soft">{p.jobTitle} · {p.zones.join(", ")}</p></div></div>
                 <div className="text-right"><p className="font-bold">⭐ {Number(p.ratingAvg).toFixed(1)}</p><Badge>Vérifié</Badge></div>
               </Card></li>
             ))}
